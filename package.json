@@ -1,0 +1,7 @@
+{
+    "scripts": {
+        "fe:dev": "cd fe && npm run dev:h5",
+        "server:dev": "cd server && npm run dev",
+        "dev": "npm run fe:dev & npm run server:dev"
+    }
+}
