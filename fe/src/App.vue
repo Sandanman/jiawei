@@ -6,6 +6,7 @@
 import { reactive, provide } from 'vue'
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { useThemeStore } from '@/stores/theme'
+import { useUserStore } from '@/stores/user'
 
 // 全局状态，供 CustomTabBar 通过 inject 获取
 const appState = reactive({
@@ -13,9 +14,21 @@ const appState = reactive({
 })
 provide('appState', appState)
 
-onLaunch(() => {
+onLaunch(async () => {
     // 启动时恢复本地主题
     useThemeStore().init()
+
+    // 启动时恢复登录态，并校验 token 是否仍然有效
+    const userStore = useUserStore()
+    if (userStore.restore()) {
+        try {
+            await userStore.fetchProfile()
+        } catch (err) {
+            console.error('[restore] token 已失效', err)
+            userStore.logout()
+        }
+    }
+
     console.log('App Launch')
 })
 

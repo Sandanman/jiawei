@@ -9,6 +9,9 @@ import type { UserInfo, FamilyBrief, FamilyRole } from '@/api/types'
 
 export type UserRole = 'owner' | 'admin' | 'member' | ''
 
+const TOKEN_STORAGE_KEY = 'userToken'
+const FAMILY_STORAGE_KEY = 'userFamilyId'
+
 // 兼容旧代码的家庭项类型
 export interface FamilyItem {
     familyId: number
@@ -69,9 +72,24 @@ export const useUserStore = defineStore('user', () => {
         }
 
         isLogin.value = true
+
+        uni.setStorageSync(TOKEN_STORAGE_KEY, token.value)
+        uni.setStorageSync(FAMILY_STORAGE_KEY, familyId.value)
     }
 
     // ===== Actions =====
+
+    /** 启动时从本地存储恢复登录态，需配合 fetchProfile 校验 token 有效性 */
+    function restore(): boolean {
+        const savedToken = uni.getStorageSync(TOKEN_STORAGE_KEY)
+        if (!savedToken) return false
+
+        token.value = savedToken
+        const savedFamilyId = uni.getStorageSync(FAMILY_STORAGE_KEY)
+        if (savedFamilyId) familyId.value = savedFamilyId
+        isLogin.value = true
+        return true
+    }
 
     /** 账号密码登录 */
     async function login(username: string, password: string): Promise<boolean> {
@@ -99,6 +117,8 @@ export const useUserStore = defineStore('user', () => {
             families.value = data.families
             const idx = families.value.findIndex(f => f.familyId === familyId.value)
             currentFamilyIndex.value = idx >= 0 ? idx : 0
+            familyId.value = families.value[currentFamilyIndex.value].familyId
+            role.value = families.value[currentFamilyIndex.value].role
         }
     }
 
@@ -109,6 +129,7 @@ export const useUserStore = defineStore('user', () => {
             currentFamilyIndex.value = index
             familyId.value = newFamilyId
             role.value = families.value[index].role
+            uni.setStorageSync(FAMILY_STORAGE_KEY, newFamilyId)
         }
     }
 
@@ -126,6 +147,9 @@ export const useUserStore = defineStore('user', () => {
         inviteCode.value = ''
         families.value = []
         currentFamilyIndex.value = 0
+
+        uni.removeStorageSync(TOKEN_STORAGE_KEY)
+        uni.removeStorageSync(FAMILY_STORAGE_KEY)
     }
 
     // ===== 兼容旧调用 =====
@@ -165,6 +189,7 @@ export const useUserStore = defineStore('user', () => {
         getCurrentPoints,
         // actions
         login,
+        restore,
         fetchProfile,
         switchFamily,
         logout,

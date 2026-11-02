@@ -44,8 +44,14 @@ flowchart TD
     P1 --> STORE_U
     P2 --> STORE_U
 
+    APP_LAUNCH["App.vue onLaunch\nfe/src/App.vue"]
+    APP_LAUNCH -->|"restore() + fetchProfile()\n启动时恢复并校验登录态"| STORE_U
+
     LOG_P2[["变更日志\n（暂无记录，legacy行为见图注）"]]
     P2 -.->|"401兜底跳转目标，与P1页面级拦截目标不一致"| LOG_P2
+
+    LOG_STORE_U[["变更日志\n2026-11-02 master 修复：登录态持久化"]]
+    STORE_U --> LOG_STORE_U
 ```
 
 - `GATE_AUTH` 为权限判断节点：登录/注册/重置密码三个接口均不需要 JWT 鉴权；`/api/auth/profile`、`/api/auth/logout` 需要 `authRequired`，因无复杂分支未展开为独立节点。`confirmed`。
@@ -289,7 +295,7 @@ flowchart TD
 | 是否读取了测试文件 | 已检查，前后端均无测试目录/测试脚本 |
 | 是否读取了配置文件/环境变量模板 | 已检查 `fe/vite.config.ts`/`manifest.json`/`pages.json`（无.env模板）及`server/.env.example`/`config/index.ts`（已列全部配置键，未抄录密钥值） |
 | 是否追踪了第三方依赖内部实现 | 未追踪，仅确认 Express/uni-app/Pinia/mysql2/jsonwebtoken 的调用接口层 |
-| `unconfirmed`：登录状态是否持久化 | 已查`App.vue`/`stores/user.ts`/`request.ts`/同域`theme.ts`持久化模式，均无`setStorageSync`调用，结论未实现持久化 |
+| `confirmed`：登录状态是否持久化 | 2026-11-02 已修复：`stores/user.ts` 新增 `restore()`，登录/切换家庭时写入 `uni.setStorageSync`（`TOKEN_STORAGE_KEY`/`FAMILY_STORAGE_KEY`），`logout()` 时清除；`App.vue:onLaunch` 调用 `restore()+fetchProfile()` 恢复并校验登录态，详见 2.1 节 `STORE_U` 变更日志 |
 | `unconfirmed`：`user.points`是否被扫描范围外程序维护 | 已查全部积分相关Service的SQL及生命周期入口，均未更新该字段，无法排除范围外维护 |
 | `inferred`→`confirmed`：后端是否复核前端隐藏按钮的权限 | 反向检查管理类页面请求参数（无权限码）+ `permissionService.ts`数据库层独立校验，已升级为`confirmed` |
 | `inferred`：401跳转`mock-login`是否为遗留代码 | 反向检查`request.ts`注释及`mock-login/index.vue:2-5`废弃说明，跳转目标是否有意如此无法确认，保留`inferred`（见2.1图注） |
@@ -303,3 +309,4 @@ flowchart TD
 - 分支：master | 日期：2026-10-19 | 变更类型：重构 | 摘要：按 skill v1.3 规则，第6节总体关系图改为按业务域拆分的2张详细图；第5/11节改为表格化精简写法。
 - 分支：master | 日期：2026-10-19 | 变更类型：重构 | 摘要：按 skill v2.0 规则全面重建：文档结构由 12 节精简为 4 节（范围与模式/关系图/文件索引/未确认项）；关系图拆分为 5 张按业务域组织的图，节点粒度到具体页面/路由，边标注真实接口路径与函数名；原 `docs/cloud-map/` 下 6 个业务域子文档（含分页面 Mermaid 图和核心数据流 sequenceDiagram）内容已完全并入本次关系图，判定为冗余并移除；引入节点级「变更日志子节点」机制，自本次基线之后的实际代码变更开始记录（本次梳理发现的历史实现缺口仍以虚线边+图注呈现，不计入变更日志）。
 - 分支：master | 日期：2026-11-02 | 变更类型：新增 | 摘要：补充地域化三餐推荐域（v1.1）：新增 2.6 节关系图，覆盖菜单管理页新增推荐弹窗、`/api/v1` 路由（today/用户上报位置/测试用 run-now）、`regionRecommendationService`、对接 Responses API 协议的 `aiService`、每日03:00内存态定时任务 `regionRecommendationCron`，以及对应数据库迁移脚本（`user.region_code` 字段 + 两张新表）；已同步补充文件/符号索引。本次实际代码变更包括：修复 `aiService.ts` 请求/响应协议由 Chat Completions 误用改为 Responses API 格式（`input` 字段 + 按 `type==='message'` 过滤 `output`），以及清理该文件内调试用 `console.log`。
+- 分支：master | 日期：2026-11-02 | 变更类型：修复 | 摘要：修复 fe 页面刷新后需要重新登录的问题：`fe/src/stores/user.ts` 新增 `restore()`，登录成功（`applyLoginResult`）和 `switchFamily` 时将 token/familyId 写入 `uni.setStorageSync`，`logout()` 时清除；补齐 `fetchProfile` 中缺失的 `role` 回填逻辑；`fe/src/App.vue` 的 `onLaunch` 中调用 `restore()+fetchProfile()` 恢复并校验登录态，校验失败则 `logout()`。详见 2.1 节关系图新增的 `APP_LAUNCH` 节点与 `STORE_U` 变更日志子节点，及第4节未确认项状态更新。
