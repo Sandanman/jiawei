@@ -49,6 +49,8 @@
 | `points_record` | 积分流水 | type: order_deduct/task_reward/dish_reward/manual_add/manual_subtract/reward_deduct |
 | `reward` | 积分商城奖励商品 | category: physical/gift/play/dish |
 | `reward_order` | 奖励兑换记录 | status: pending/received/cancelled |
+| `daily_region_recommendation` | 地域化三餐推荐记录（v1.1） | status: success/failed |
+| `daily_region_recommendation_item` | 地域化三餐推荐明细（早/中/晚，v1.1） | meal_type: breakfast/lunch/dinner |
 
 ## 4. 表关联关系（逻辑外键，未在 DB 层建约束，仅靠代码保证一致性）
 

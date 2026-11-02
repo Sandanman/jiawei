@@ -23,11 +23,19 @@ interface JwtConfig {
     expiresIn: string
 }
 
+interface AiConfig {
+    apiUrl: string
+    apiKey: string
+    model: string
+    timeoutMs: number
+}
+
 interface Config {
     app: AppConfig
     db: DbConfig
     jwt: JwtConfig
     dbPool: PoolOptions
+    ai: AiConfig
 }
 
 const env = process.env
@@ -49,6 +57,12 @@ export const config: Config = {
     jwt: {
         secret: env.JWT_SECRET || 'dev_secret_change_me',
         expiresIn: env.JWT_EXPIRES_IN || '7d'
+    },
+    ai: {
+        apiUrl: env.AI_API_URL || '',
+        apiKey: env.AI_API_KEY || '',
+        model: env.AI_MODEL || '',
+        timeoutMs: Number(env.AI_TIMEOUT_MS) || 10000
     },
     dbPool: {
         host: env.DB_HOST || 'localhost',

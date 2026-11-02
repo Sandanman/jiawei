@@ -209,6 +209,45 @@ flowchart TD
 - 兑换事务（`confirmed`，`rewardService.ts:278-364`）：查询奖励上架/库存 → 锁定并扣减积分 → 扣减库存 → 写 `reward_order` → 写 `points_record(reward_deduct)`。
 - `P15` 管理员额外可见入口跳转自商城首页，该页面自身独立做管理员校验，不依赖商城首页的权限判断，`confirmed`。
 
+### 2.6 地域化三餐推荐域（v1.1）
+
+```mermaid
+flowchart TD
+    subgraph FE_REGION["前端 - 地域化三餐推荐域"]
+        P9B["菜单管理页\n/pages/menu/index\n（新增推荐弹窗）"]
+    end
+
+    subgraph BE_REGION["后端 - 地域推荐域 /api/v1（routes/regionRecommendation.ts）"]
+        GATE_REGION{"authRequired"}
+        BIZ_REGION["regionRecommendationController\n→regionRecommendationService"]
+        AI_SVC["aiService.generateRegionMealPlan\n(POST AI_API_URL, Responses API协议)"]
+        DB_USER_REGION[("user.region_code")]
+        DB_REGION[("daily_region_recommendation /\ndaily_region_recommendation_item")]
+    end
+
+    CRON["regionRecommendationCron\nsetTimeout对齐3AM+setInterval 24h"]
+
+    P9B -->|"getTodayRegionRecommendation()\nGET /api/v1/region-recommendation/today"| GATE_REGION
+    P9B -->|"reportUserRegion(location)\nPOST /api/v1/user/region"| GATE_REGION
+    P9B -.->|"runRegionRecommendationNow()\nPOST /api/v1/region-recommendation/run-now\n[测试用，上线前应移除]"| GATE_REGION
+    GATE_REGION -->|"通过"| BIZ_REGION
+
+    BIZ_REGION -->|"setUserRegion: 坐标四舍五入到2位小数"| DB_USER_REGION
+    BIZ_REGION -->|"getTodayRecommendation: 按region_code+当日日期查询"| DB_REGION
+    BIZ_REGION -->|"runDailyRegionRecommendationJob/generateForRegion:\n遍历listDistinctRegionCodes逐个生成"| AI_SVC
+    AI_SVC -->|"失败不兜底，写status=failed"| DB_REGION
+    AI_SVC -->|"成功：解析JSON写入三餐明细"| DB_REGION
+
+    CRON -->|"每日03:00调用\nrunDailyRegionRecommendationJob"| BIZ_REGION
+```
+
+- 定时任务（`confirmed`，`server/src/jobs/regionRecommendationCron.ts:10-40`）：进程内存态定时器，不依赖外部 cron 服务；每次 `server/src/app.ts:56` 在 `bootstrap()` 中随进程启动注册，进程重启会重新计算到下一个 03:00 的延迟，不持久化上次执行时间。
+- `region_code` 生成规则（`confirmed`，`regionRecommendationService.ts:160-174`）：前端上报原始 GPS 坐标字符串 `"纬度,经度"`，后端四舍五入到小数点后 2 位（约 1.1km 精度）作为分组键，直接以该字符串作为 AI Prompt 中的"地域名"传入，未接入逆地理编码（城市名转换），`fe/src/pages/menu/index.vue:626-627` 注释中标注该逆地理编码为后续待接入事项。
+- AI 调用协议（`confirmed`，`server/src/services/aiService.ts`）：当前对接的厂商端点为 OpenAI **Responses API** 格式（非 Chat Completions），请求体用 `input` 字段传 prompt，响应需从 `output` 数组中按 `type === 'message'` 过滤出对应项取 `content[0].text`（`output[0]` 可能是 `type: 'summary'` 推理摘要，不能直接取第一个元素）；超时由 `AbortController` + `config.ai.timeoutMs`（`.env` 的 `AI_TIMEOUT_MS`）控制，AI 失败/超时/解析异常均不做兜底，直接向上抛出由 `generateForRegion` 捕获写 `status=failed`。
+- 幂等与重试（`confirmed`，`regionRecommendationService.ts:31-46`）：`generateForRegion` 对同一 `region_code`+当日日期已存在 `status=success` 的记录直接跳过；若已有 `status=failed` 记录，先删除旧记录再重新生成（允许失败重试，不保留失败历史明细）。
+- `run-now` 接口（`confirmed`，`routes/regionRecommendation.ts:18` 注释）：测试用途，跳过定时等待立即触发全量 `region_code` 批量生成，代码注释显式标注"上线前应移除"，当前仍挂载在正式路由前缀 `/api/v1` 下。
+- `P9B` 菜单管理页新增"今日推荐"弹窗三个交互：`handleShowRecommendation`（查询 today）、`handleReportLocation`（`uni.getLocation` 获取 GPS 后上报）、`handleRetryRecommendation`（失败后调用 run-now 重试），均为 `confirmed`，证据 `fe/src/pages/menu/index.vue:584-621`。
+
 ---
 
 ## 3. 文件/符号索引
@@ -232,6 +271,14 @@ flowchart TD
 - `server/src/db/index.ts`：`pool`、`query`、`queryOne`、`insert`、`update`、`testConnection`（mysql2连接池，无ORM）
 - `server/src/controllers/*.ts`、`server/src/services/*.ts`：7 组 Controller/Service 对应 7 个业务域
 - `server/docs/jiawei_db_schema.sql`：数据库表结构（13 张表）
+- `server/src/controllers/regionRecommendationController.ts`：`getTodayRegionRecommendationHandler`/`reportUserRegionHandler`/`runRegionRecommendationNowHandler`
+- `server/src/services/regionRecommendationService.ts`：`listDistinctRegionCodes`/`generateForRegion`/`runDailyRegionRecommendationJob`/`getTodayRecommendation`/`setUserRegion`
+- `server/src/services/aiService.ts`：`generateRegionMealPlan`/`buildPrompt`/`parseMealPlan`（对接厂商 Responses API）
+- `server/src/jobs/regionRecommendationCron.ts`：`startRegionRecommendationCron`（内存态定时器，每日03:00）
+- `server/src/utils/season.ts`：`getCurrentSeason`
+- `server/src/routes/regionRecommendation.ts`：挂载于 `/api/v1`
+- `server/docs/migrations/2026103001_region_recommendation_v1.1.sql`：`user.region_code` 字段 + `daily_region_recommendation`/`daily_region_recommendation_item` 两张新表迁移脚本（需人工执行，未自动生效）
+- `fe/src/api/regionRecommendation.ts`：`getTodayRegionRecommendation`/`reportUserRegion`/`runRegionRecommendationNow`
 
 ---
 
@@ -255,3 +302,4 @@ flowchart TD
 - 分支：master | 日期：2026-10-19 | 变更类型：新增 | 摘要：首次生成项目云图（skill v1.1-v1.3 的 12 节结构），覆盖前端 18 个页面与后端 9 个路由，分页面数据流转图拆分至 `docs/cloud-map/` 下 6 个业务域子文档。
 - 分支：master | 日期：2026-10-19 | 变更类型：重构 | 摘要：按 skill v1.3 规则，第6节总体关系图改为按业务域拆分的2张详细图；第5/11节改为表格化精简写法。
 - 分支：master | 日期：2026-10-19 | 变更类型：重构 | 摘要：按 skill v2.0 规则全面重建：文档结构由 12 节精简为 4 节（范围与模式/关系图/文件索引/未确认项）；关系图拆分为 5 张按业务域组织的图，节点粒度到具体页面/路由，边标注真实接口路径与函数名；原 `docs/cloud-map/` 下 6 个业务域子文档（含分页面 Mermaid 图和核心数据流 sequenceDiagram）内容已完全并入本次关系图，判定为冗余并移除；引入节点级「变更日志子节点」机制，自本次基线之后的实际代码变更开始记录（本次梳理发现的历史实现缺口仍以虚线边+图注呈现，不计入变更日志）。
+- 分支：master | 日期：2026-11-02 | 变更类型：新增 | 摘要：补充地域化三餐推荐域（v1.1）：新增 2.6 节关系图，覆盖菜单管理页新增推荐弹窗、`/api/v1` 路由（today/用户上报位置/测试用 run-now）、`regionRecommendationService`、对接 Responses API 协议的 `aiService`、每日03:00内存态定时任务 `regionRecommendationCron`，以及对应数据库迁移脚本（`user.region_code` 字段 + 两张新表）；已同步补充文件/符号索引。本次实际代码变更包括：修复 `aiService.ts` 请求/响应协议由 Chat Completions 误用改为 Responses API 格式（`input` 字段 + 按 `type==='message'` 过滤 `output`），以及清理该文件内调试用 `console.log`。

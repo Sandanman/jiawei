@@ -16,6 +16,8 @@ import orderRouter from './routes/order'
 import pointsRouter from './routes/points'
 import taskRouter from './routes/task'
 import rewardRouter from './routes/reward'
+import regionRecommendationRouter from './routes/regionRecommendation'
+import { startRegionRecommendationCron } from './jobs/regionRecommendationCron'
 
 const app = express()
 
@@ -41,6 +43,7 @@ app.use('/api/order', orderRouter)
 app.use('/api/points', pointsRouter)
 app.use('/api/task', taskRouter)
 app.use('/api/reward', rewardRouter)
+app.use('/api/v1', regionRecommendationRouter)
 
 // ===== 错误处理 =====
 app.use(notFound)
@@ -50,6 +53,7 @@ app.use(errorHandler)
 async function bootstrap(): Promise<void> {
     try {
         await testConnection()
+        startRegionRecommendationCron()
 
         app.listen(config.app.port, () => {
             console.log('========================================')

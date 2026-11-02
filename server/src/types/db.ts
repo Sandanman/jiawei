@@ -11,6 +11,7 @@ export interface UserRow {
     invite_code: string
     points: number
     status: number
+    region_code: string
     created_at: string
     updated_at: string
 }
@@ -202,5 +203,35 @@ export interface RewardOrderRow {
     status: RewardOrderStatus
     received_at: string | null
     received_by: number | null
+    created_at: string
+}
+
+/** 地域推荐生成状态 */
+export type RecommendationStatus = 'success' | 'failed'
+
+/** 季节快照 */
+export type Season = '春' | '夏' | '秋' | '冬'
+
+/** 三餐类型 */
+export type MealType = 'breakfast' | 'lunch' | 'dinner'
+
+export interface DailyRegionRecommendationRow {
+    id: number
+    region_code: string
+    recommend_date: string
+    season: Season
+    status: RecommendationStatus
+    generated_at: string
+    created_at: string
+    updated_at: string
+}
+
+export interface DailyRegionRecommendationItemRow {
+    id: number
+    recommendation_id: number
+    meal_type: MealType
+    dish_name: string
+    description: string
+    sort_order: number
     created_at: string
 }

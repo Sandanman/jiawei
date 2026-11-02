@@ -234,6 +234,48 @@
             </view>
         </view>
 
+        <!-- AI推荐菜气泡 -->
+        <view class="ai-bubble" @tap="handleShowRecommendation">
+            <text class="ai-bubble-text">AI推荐菜</text>
+        </view>
+
+        <!-- 今日推荐菜弹窗 -->
+        <view v-if="showRecommendationModal" class="modal-overlay" @tap="handleCloseRecommendationModal">
+            <view class="modal-content recommendation-modal" @tap.stop>
+                <view class="modal-header">
+                    <text class="modal-title">今日AI推荐菜</text>
+                    <text class="modal-close" @tap="handleCloseRecommendationModal">×</text>
+                </view>
+                <scroll-view scroll-y class="modal-body">
+                    <view v-if="recommendationLoading" class="empty-state">
+                        <text class="empty-text">加载中...</text>
+                    </view>
+                    <view v-else-if="recommendationError" class="empty-state">
+                        <text class="empty-icon">😕</text>
+                        <text class="empty-text">{{ recommendationError }}</text>
+                        <view v-if="needLocation" class="location-btn" @tap="handleReportLocation">
+                            <text>{{ locationLoading ? '定位中...' : '获取定位' }}</text>
+                        </view>
+                        <view v-if="needRetry" class="location-btn" @tap="handleRetryRecommendation">
+                            <text>{{ retryLoading ? '重新生成中...' : '重试' }}</text>
+                        </view>
+                    </view>
+                    <view v-else-if="recommendation">
+                        <view v-for="meal in mealGroups" :key="meal.key" class="meal-group">
+                            <text class="meal-title">{{ meal.label }}</text>
+                            <view v-if="meal.items.length === 0" class="meal-empty">
+                                <text>暂无推荐</text>
+                            </view>
+                            <view v-for="(item, idx) in meal.items" :key="idx" class="meal-item">
+                                <text class="meal-dish-name">{{ item.dishName }}</text>
+                                <text class="meal-dish-desc">{{ item.description }}</text>
+                            </view>
+                        </view>
+                    </view>
+                </scroll-view>
+            </view>
+        </view>
+
         <CustomTabBar />
     </view>
 </template>
@@ -246,8 +288,10 @@ import { useThemeStore } from '@/stores/theme'
 import CustomTabBar from '@/components/custom-tab-bar/index.vue'
 import * as dishApi from '@/api/dish'
 import * as orderApi from '@/api/order'
+import * as regionRecommendationApi from '@/api/regionRecommendation'
 import type { Dish } from '@/api/types'
 import type { Order, OrderStatus } from '@/api/types'
+import type { RegionRecommendationToday } from '@/api/types'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
@@ -290,6 +334,25 @@ const dishForm = ref({
 // 是否是管理员
 const isAdmin = computed(() => userStore.isAdmin())
 const familyId = computed(() => userStore.familyId)
+
+// AI推荐菜弹窗
+const showRecommendationModal = ref(false)
+const recommendationLoading = ref(false)
+const recommendationError = ref('')
+const recommendation = ref<RegionRecommendationToday | null>(null)
+const needLocation = ref(false)
+const locationLoading = ref(false)
+const needRetry = ref(false)
+const retryLoading = ref(false)
+
+const mealGroups = computed(() => {
+    if (!recommendation.value) return []
+    return [
+        { key: 'breakfast', label: '早餐', items: recommendation.value.meals.breakfast },
+        { key: 'lunch', label: '午餐', items: recommendation.value.meals.lunch },
+        { key: 'dinner', label: '晚餐', items: recommendation.value.meals.dinner },
+    ]
+})
 
 // 检查登录状态
 onShow(async () => {
@@ -516,6 +579,75 @@ const handleCancelOrder = (order: Order) => {
             }
         },
     })
+}
+
+const handleShowRecommendation = async () => {
+    showRecommendationModal.value = true
+    recommendationError.value = ''
+    recommendation.value = null
+    needLocation.value = false
+    needRetry.value = false
+    recommendationLoading.value = true
+    try {
+        const result = await regionRecommendationApi.getTodayRegionRecommendation()
+        if (!result) {
+            recommendationError.value = '暂未获取到您的地域信息，请先上报位置'
+            needLocation.value = true
+            return
+        }
+        if (result.status === 'failed') {
+            recommendationError.value = '今日推荐生成失败，请稍后再试'
+            needRetry.value = true
+            return
+        }
+        recommendation.value = result
+    } catch (err) {
+        recommendationError.value = '获取推荐失败，请稍后再试'
+    } finally {
+        recommendationLoading.value = false
+    }
+}
+
+const handleRetryRecommendation = async () => {
+    retryLoading.value = true
+    try {
+        await regionRecommendationApi.runRegionRecommendationNow()
+        await handleShowRecommendation()
+    } catch (err) {
+        // 错误已由 http 拦截器 toast
+    } finally {
+        retryLoading.value = false
+    }
+}
+
+const handleReportLocation = () => {
+    locationLoading.value = true
+    uni.getLocation({
+        // H5 端 gcj02 需配置地图SDK Key做坐标转换，暂未接入，统一用 wgs84 跳过该依赖
+        type: 'wgs84',
+        success: async (res) => {
+            try {
+                // 逆地理编码留待后续接入腾讯/高德等地图服务，当前先以经纬度拼接字符串占位上报
+                const location = `${res.latitude},${res.longitude}`
+                await regionRecommendationApi.reportUserRegion(location)
+                uni.showToast({ title: '位置已上报', icon: 'success' })
+                needLocation.value = false
+                await handleShowRecommendation()
+            } catch (err) {
+                // 错误已由 http 拦截器 toast
+            } finally {
+                locationLoading.value = false
+            }
+        },
+        fail: () => {
+            uni.showToast({ title: '获取定位失败，请检查定位权限', icon: 'none' })
+            locationLoading.value = false
+        },
+    })
+}
+
+const handleCloseRecommendationModal = () => {
+    showRecommendationModal.value = false
 }
 </script>
 
@@ -998,5 +1130,93 @@ const handleCancelOrder = (order: Order) => {
     font-size: 26rpx;
     color: #666;
     text-align: center;
+}
+
+// AI推荐菜气泡
+.ai-bubble {
+    position: fixed;
+    right: 24rpx;
+    bottom: 220rpx;
+    z-index: 999;
+    padding: 20rpx 24rpx;
+    background-color: var(--theme-primary);
+    color: #fff;
+    border-radius: 40rpx;
+    box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.2);
+
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: -10rpx;
+        right: 32rpx;
+        width: 0;
+        height: 0;
+        border-left: 10rpx solid transparent;
+        border-right: 10rpx solid transparent;
+        border-top: 10rpx solid var(--theme-primary);
+    }
+}
+
+.ai-bubble-text {
+    font-size: 24rpx;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.recommendation-modal {
+    width: 100%;
+    max-height: 85vh;
+    background-color: #fff;
+    border-radius: 32rpx 32rpx 0 0;
+}
+
+.meal-group {
+    margin-bottom: 32rpx;
+}
+
+.meal-title {
+    display: block;
+    font-size: 28rpx;
+    font-weight: bold;
+    color: var(--theme-primary);
+    margin-bottom: 16rpx;
+}
+
+.meal-empty {
+    font-size: 24rpx;
+    color: #999;
+    padding: 12rpx 0;
+}
+
+.meal-item {
+    padding: 16rpx 0;
+    border-bottom: 1rpx solid #f5f5f5;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.meal-dish-name {
+    display: block;
+    font-size: 28rpx;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 6rpx;
+}
+
+.meal-dish-desc {
+    display: block;
+    font-size: 24rpx;
+    color: #999;
+}
+
+.location-btn {
+    margin-top: 24rpx;
+    padding: 16rpx 32rpx;
+    background-color: var(--theme-primary);
+    color: #fff;
+    border-radius: 24rpx;
+    font-size: 26rpx;
 }
 </style>

@@ -276,3 +276,35 @@ export interface RedeemRewardResult {
     orderId: number
     balance: number
 }
+
+// ===== v1.1 地域化三餐推荐 =====
+export type MealType = import('./db').MealType
+export type RecommendationStatus = import('./db').RecommendationStatus
+
+export interface RegionRecommendationMealItem {
+    dishName: string
+    description: string
+}
+
+export interface RegionRecommendationToday {
+    regionCode: string
+    recommendDate: string
+    season: import('./db').Season
+    status: RecommendationStatus
+    meals: {
+        breakfast: RegionRecommendationMealItem[]
+        lunch: RegionRecommendationMealItem[]
+        dinner: RegionRecommendationMealItem[]
+    }
+}
+
+export interface AiMealPlanItem {
+    dishName: string
+    description?: string
+}
+
+export interface AiMealPlanResult {
+    breakfast: AiMealPlanItem[]
+    lunch: AiMealPlanItem[]
+    dinner: AiMealPlanItem[]
+}

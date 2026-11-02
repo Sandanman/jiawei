@@ -19,6 +19,11 @@
       "postcss": true,
       "minified": true
     },
-    "usingComponents": true
+    "usingComponents": true,
+    "permission": {
+      "scope.userLocation": {
+        "desc": "用于获取您所在地域，生成今日AI推荐菜"
+      }
+    }
   }
 }
