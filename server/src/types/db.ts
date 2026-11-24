@@ -12,9 +12,13 @@ export interface UserRow {
     points: number
     status: number
     region_code: string
+    region_name: string
+    region_source: RegionSource
     created_at: string
     updated_at: string
 }
+
+export type RegionSource = 'gps' | 'ip' | 'manual'
 
 export interface FamilyRow {
     id: number
@@ -209,29 +213,21 @@ export interface RewardOrderRow {
 /** 地域推荐生成状态 */
 export type RecommendationStatus = 'success' | 'failed'
 
-/** 季节快照 */
+/** 季节 */
 export type Season = '春' | '夏' | '秋' | '冬'
 
 /** 三餐类型 */
 export type MealType = 'breakfast' | 'lunch' | 'dinner'
 
-export interface DailyRegionRecommendationRow {
+/** 地域三餐推荐（一行一道菜；失败时仅有 1 行 status=failed、dish_name 为空的占位行） */
+export interface DailyRegionMealRow {
     id: number
     region_code: string
     recommend_date: string
-    season: Season
-    status: RecommendationStatus
-    generated_at: string
-    created_at: string
-    updated_at: string
-}
-
-export interface DailyRegionRecommendationItemRow {
-    id: number
-    recommendation_id: number
     meal_type: MealType
+    sort_order: number
     dish_name: string
     description: string
-    sort_order: number
+    status: RecommendationStatus
     created_at: string
 }

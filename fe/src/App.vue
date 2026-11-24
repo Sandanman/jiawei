@@ -52,4 +52,10 @@ page {
     --theme-primary-grad-start: #ff6b35;
     --theme-primary-grad-end: #ff8c5a;
 }
+
+// H5 端 picker 弹层默认 z-index 低于页面自定义弹窗（modal-overlay 1000）与 TabBar（999），
+// 会被遮挡在弹窗后面；这里提高到最上层（小程序为原生组件，不受影响）
+.uni-picker-container {
+    z-index: 1100 !important;
+}
 </style>

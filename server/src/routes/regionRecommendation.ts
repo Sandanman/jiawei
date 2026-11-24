@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { authRequired } from '../middlewares/auth'
 import {
+    generateMyRegionRecommendationHandler,
     getTodayRegionRecommendationHandler,
     reportUserRegionHandler,
     runRegionRecommendationNowHandler
@@ -15,6 +16,7 @@ router.use(authRequired)
  */
 router.get('/region-recommendation/today', getTodayRegionRecommendationHandler)
 router.post('/user/region', reportUserRegionHandler)
+router.post('/region-recommendation/generate', generateMyRegionRecommendationHandler)
 // [测试用] 手动触发一次批量生成，跳过 03:00 定时等待，上线前应移除
 router.post('/region-recommendation/run-now', runRegionRecommendationNowHandler)
 

@@ -280,6 +280,13 @@ export interface RedeemRewardResult {
 // ===== v1.1 地域化三餐推荐 =====
 export type MealType = import('./db').MealType
 export type RecommendationStatus = import('./db').RecommendationStatus
+export type RegionSource = import('./db').RegionSource
+
+export interface UserRegionResult {
+    regionCode: string
+    regionName: string
+    regionSource: RegionSource
+}
 
 export interface RegionRecommendationMealItem {
     dishName: string
@@ -288,6 +295,8 @@ export interface RegionRecommendationMealItem {
 
 export interface RegionRecommendationToday {
     regionCode: string
+    regionName: string
+    regionSource: RegionSource
     recommendDate: string
     season: import('./db').Season
     status: RecommendationStatus

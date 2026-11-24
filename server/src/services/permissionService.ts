@@ -12,11 +12,13 @@ export interface MemberRole {
 }
 
 /**
- * 获取用户在家庭中的成员关系，不存在返回 null
+ * 获取用户在家庭中的成员关系，不存在或家庭已注销返回 null
  */
 export async function getMemberRole(userId: number, familyId: number): Promise<MemberRole | null> {
     const member = await queryOne<FamilyMemberRow>(
-        `SELECT * FROM family_member WHERE family_id = ? AND user_id = ?`,
+        `SELECT fm.* FROM family_member fm
+        JOIN family f ON f.id = fm.family_id
+        WHERE fm.family_id = ? AND fm.user_id = ? AND f.status = 1`,
         [familyId, userId]
     )
     if (!member) return null

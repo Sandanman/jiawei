@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
+import { queryOne } from '../db'
 import { extractToken } from '../utils/jwt'
 import type { JwtPayload } from '../types/api'
 
@@ -13,10 +14,11 @@ declare module 'express-serve-static-core' {
 /**
  * JWT 鉴权中间件
  * - 从 Authorization: Bearer <token> 提取
+ * - 验证通过后查询 user.status，禁用用户即时失效
  * - 验证通过挂载 req.userId / req.jwt
  * - 未通过返回 401
  */
-export function authRequired(req: Request, res: Response, next: NextFunction): void {
+export async function authRequired(req: Request, res: Response, next: NextFunction): Promise<void> {
     const payload = extractToken(req.headers.authorization)
 
     if (!payload) {
@@ -25,6 +27,24 @@ export function authRequired(req: Request, res: Response, next: NextFunction): v
             message: '未登录或登录已过期',
             data: null
         })
+        return
+    }
+
+    try {
+        const user = await queryOne<{ status: number }>(
+            `SELECT status FROM user WHERE id = ?`,
+            [payload.userId]
+        )
+        if (!user || user.status !== 1) {
+            res.status(401).json({
+                code: 401,
+                message: '账号已被禁用或不存在',
+                data: null
+            })
+            return
+        }
+    } catch (err) {
+        next(err)
         return
     }
 

@@ -235,7 +235,7 @@
         </view>
 
         <!-- AI推荐菜气泡 -->
-        <view class="ai-bubble" @tap="handleShowRecommendation">
+        <view class="ai-bubble" @tap="handleShowRecommendation()">
             <text class="ai-bubble-text">AI推荐菜</text>
         </view>
 
@@ -248,7 +248,7 @@
                 </view>
                 <scroll-view scroll-y class="modal-body">
                     <view v-if="recommendationLoading" class="empty-state">
-                        <text class="empty-text">加载中...</text>
+                        <text class="empty-text">{{ recommendationLoadingText }}</text>
                     </view>
                     <view v-else-if="recommendationError" class="empty-state">
                         <text class="empty-icon">😕</text>
@@ -256,11 +256,35 @@
                         <view v-if="needLocation" class="location-btn" @tap="handleReportLocation">
                             <text>{{ locationLoading ? '定位中...' : '获取定位' }}</text>
                         </view>
+                        <picker
+                            v-if="needLocation"
+                            mode="multiSelector"
+                            :range="cityColumns"
+                            :value="cityPickerValue"
+                            @columnchange="handleCityColumnChange"
+                            @change="handleCityPicked"
+                        >
+                            <view class="location-btn secondary">
+                                <text>手动选择城市</text>
+                            </view>
+                        </picker>
                         <view v-if="needRetry" class="location-btn" @tap="handleRetryRecommendation">
                             <text>{{ retryLoading ? '重新生成中...' : '重试' }}</text>
                         </view>
                     </view>
                     <view v-else-if="recommendation">
+                        <view class="region-bar">
+                            <text class="region-name">📍 {{ recommendation.regionName }}{{ regionSourceHint }}</text>
+                            <picker
+                                mode="multiSelector"
+                                :range="cityColumns"
+                                :value="cityPickerValue"
+                                @columnchange="handleCityColumnChange"
+                                @change="handleCityPicked"
+                            >
+                                <text class="region-switch">切换城市</text>
+                            </picker>
+                        </view>
                         <view v-for="meal in mealGroups" :key="meal.key" class="meal-group">
                             <text class="meal-title">{{ meal.label }}</text>
                             <view v-if="meal.items.length === 0" class="meal-empty">
@@ -291,7 +315,8 @@ import * as orderApi from '@/api/order'
 import * as regionRecommendationApi from '@/api/regionRecommendation'
 import type { Dish } from '@/api/types'
 import type { Order, OrderStatus } from '@/api/types'
-import type { RegionRecommendationToday } from '@/api/types'
+import type { RegionRecommendationToday, ReportRegionPayload } from '@/api/types'
+import { CITY_DATA } from '@/utils/cityData'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
@@ -338,12 +363,28 @@ const familyId = computed(() => userStore.familyId)
 // AI推荐菜弹窗
 const showRecommendationModal = ref(false)
 const recommendationLoading = ref(false)
+const recommendationLoadingText = ref('加载中...')
 const recommendationError = ref('')
 const recommendation = ref<RegionRecommendationToday | null>(null)
 const needLocation = ref(false)
 const locationLoading = ref(false)
 const needRetry = ref(false)
 const retryLoading = ref(false)
+
+// 手动选城市 picker：省 / 市两列联动
+const cityPickerValue = ref([0, 0])
+const cityColumns = computed(() => [
+    CITY_DATA.map(province => province.name),
+    CITY_DATA[cityPickerValue.value[0]].cities.map(city => city.name),
+])
+
+// 定位来源为 IP / 手动时给出提示，GPS 定位不展示
+const regionSourceHint = computed(() => {
+    const source = recommendation.value?.regionSource
+    if (source === 'ip') return '（IP 定位）'
+    if (source === 'manual') return '（手动选择）'
+    return ''
+})
 
 const mealGroups = computed(() => {
     if (!recommendation.value) return []
@@ -581,17 +622,28 @@ const handleCancelOrder = (order: Order) => {
     })
 }
 
-const handleShowRecommendation = async () => {
+// autoGenerate：切换城市后当日尚无记录时，自动为该地域生成推荐，无需用户再点「重试」
+const handleShowRecommendation = async (autoGenerate = false) => {
     showRecommendationModal.value = true
     recommendationError.value = ''
     recommendation.value = null
     needLocation.value = false
     needRetry.value = false
     recommendationLoading.value = true
+    recommendationLoadingText.value = '加载中...'
     try {
-        const result = await regionRecommendationApi.getTodayRegionRecommendation()
+        let result = await regionRecommendationApi.getTodayRegionRecommendation()
+        if (result && result.status === 'failed' && autoGenerate) {
+            recommendationLoadingText.value = `正在为${result.regionName}生成今日推荐...`
+            try {
+                await regionRecommendationApi.generateMyRegionRecommendation()
+            } catch (err) {
+                // 错误已由 http 拦截器 toast，继续重新查询，仍失败则展示「重试」
+            }
+            result = await regionRecommendationApi.getTodayRegionRecommendation()
+        }
         if (!result) {
-            recommendationError.value = '暂未获取到您的地域信息，请先上报位置'
+            recommendationError.value = '暂未获取到您的地域信息，请先定位或手动选择城市'
             needLocation.value = true
             return
         }
@@ -611,7 +663,7 @@ const handleShowRecommendation = async () => {
 const handleRetryRecommendation = async () => {
     retryLoading.value = true
     try {
-        await regionRecommendationApi.runRegionRecommendationNow()
+        await regionRecommendationApi.generateMyRegionRecommendation()
         await handleShowRecommendation()
     } catch (err) {
         // 错误已由 http 拦截器 toast
@@ -620,30 +672,48 @@ const handleRetryRecommendation = async () => {
     }
 }
 
+// 上报地域并刷新推荐，失败时错误已由 http 拦截器 toast
+const submitRegion = async (payload: ReportRegionPayload): Promise<boolean> => {
+    try {
+        const result = await regionRecommendationApi.reportUserRegion(payload)
+        uni.showToast({ title: `已定位到${result.regionName}`, icon: 'none' })
+        needLocation.value = false
+        await handleShowRecommendation(true)
+        return true
+    } catch (err) {
+        return false
+    }
+}
+
 const handleReportLocation = () => {
+    if (locationLoading.value) return
     locationLoading.value = true
     uni.getLocation({
-        // H5 端 gcj02 需配置地图SDK Key做坐标转换，暂未接入，统一用 wgs84 跳过该依赖
+        // H5 端 gcj02 需配置地图SDK Key做坐标转换，暂未接入，统一用 wgs84；服务端逆地理编码只取市级，偏移可忽略
         type: 'wgs84',
         success: async (res) => {
-            try {
-                // 逆地理编码留待后续接入腾讯/高德等地图服务，当前先以经纬度拼接字符串占位上报
-                const location = `${res.latitude},${res.longitude}`
-                await regionRecommendationApi.reportUserRegion(location)
-                uni.showToast({ title: '位置已上报', icon: 'success' })
-                needLocation.value = false
-                await handleShowRecommendation()
-            } catch (err) {
-                // 错误已由 http 拦截器 toast
-            } finally {
-                locationLoading.value = false
-            }
+            await submitRegion({ source: 'gps', latitude: res.latitude, longitude: res.longitude })
+            locationLoading.value = false
         },
-        fail: () => {
-            uni.showToast({ title: '获取定位失败，请检查定位权限', icon: 'none' })
+        fail: async () => {
+            // 拒绝授权/定位失败：降级为 IP 定位；仍失败则由用户通过「手动选择城市」兜底
+            await submitRegion({ source: 'ip' })
             locationLoading.value = false
         },
     })
+}
+
+const handleCityColumnChange = (e: { detail: { column: number; value: number } }) => {
+    const { column, value } = e.detail
+    cityPickerValue.value = column === 0 ? [value, 0] : [cityPickerValue.value[0], value]
+}
+
+const handleCityPicked = async (e: { detail: { value: number[] } }) => {
+    const [provinceIdx, cityIdx] = e.detail.value
+    const city = CITY_DATA[provinceIdx]?.cities[cityIdx]
+    if (!city) return
+    cityPickerValue.value = [provinceIdx, cityIdx]
+    await submitRegion({ source: 'manual', adcode: city.adcode })
 }
 
 const handleCloseRecommendationModal = () => {
@@ -1218,5 +1288,28 @@ const handleCloseRecommendationModal = () => {
     color: #fff;
     border-radius: 24rpx;
     font-size: 26rpx;
+}
+
+.location-btn.secondary {
+    background-color: #fff;
+    color: var(--theme-primary);
+    border: 1rpx solid var(--theme-primary);
+}
+
+.region-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24rpx;
+}
+
+.region-name {
+    font-size: 26rpx;
+    color: #666;
+}
+
+.region-switch {
+    font-size: 26rpx;
+    color: var(--theme-primary);
 }
 </style>

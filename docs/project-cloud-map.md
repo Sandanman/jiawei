@@ -228,7 +228,7 @@ flowchart TD
         BIZ_REGION["regionRecommendationController\n→regionRecommendationService"]
         AI_SVC["aiService.generateRegionMealPlan\n(POST AI_API_URL, Responses API协议)"]
         DB_USER_REGION[("user.region_code")]
-        DB_REGION[("daily_region_recommendation /\ndaily_region_recommendation_item")]
+        DB_REGION[("daily_region_meal\n(地区+日期+餐段，一行一道菜)")]
     end
 
     CRON["regionRecommendationCron\nsetTimeout对齐3AM+setInterval 24h"]
@@ -284,6 +284,7 @@ flowchart TD
 - `server/src/utils/season.ts`：`getCurrentSeason`
 - `server/src/routes/regionRecommendation.ts`：挂载于 `/api/v1`
 - `server/docs/migrations/2026103001_region_recommendation_v1.1.sql`：`user.region_code` 字段 + `daily_region_recommendation`/`daily_region_recommendation_item` 两张新表迁移脚本（需人工执行，未自动生效）
+- `server/docs/migrations/2026112302_region_meal_merge_v1.1.sql`：两张推荐表合并为 `daily_region_meal`（保留 status 与 description，失败用占位行；旧表 DROP 语句已注释，需人工确认后执行，未自动生效）
 - `fe/src/api/regionRecommendation.ts`：`getTodayRegionRecommendation`/`reportUserRegion`/`runRegionRecommendationNow`
 
 ---

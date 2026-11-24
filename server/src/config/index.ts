@@ -30,12 +30,18 @@ interface AiConfig {
     timeoutMs: number
 }
 
+interface MapConfig {
+    tencentKey: string
+    timeoutMs: number
+}
+
 interface Config {
     app: AppConfig
     db: DbConfig
     jwt: JwtConfig
     dbPool: PoolOptions
     ai: AiConfig
+    map: MapConfig
 }
 
 const env = process.env
@@ -63,6 +69,10 @@ export const config: Config = {
         apiKey: env.AI_API_KEY || '',
         model: env.AI_MODEL || '',
         timeoutMs: Number(env.AI_TIMEOUT_MS) || 10000
+    },
+    map: {
+        tencentKey: env.TENCENT_MAP_KEY || '',
+        timeoutMs: Number(env.MAP_TIMEOUT_MS) || 5000
     },
     dbPool: {
         host: env.DB_HOST || 'localhost',

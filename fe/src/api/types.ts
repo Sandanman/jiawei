@@ -347,8 +347,23 @@ export interface RegionRecommendationMealItem {
     description: string
 }
 
+export type RegionSource = 'gps' | 'ip' | 'manual'
+
+export type ReportRegionPayload =
+    | { source: 'gps'; latitude: number; longitude: number }
+    | { source: 'ip' }
+    | { source: 'manual'; adcode: string }
+
+export interface UserRegionResult {
+    regionCode: string
+    regionName: string
+    regionSource: RegionSource
+}
+
 export interface RegionRecommendationToday {
     regionCode: string
+    regionName: string
+    regionSource: RegionSource
     recommendDate: string
     season: string
     status: RecommendationStatus

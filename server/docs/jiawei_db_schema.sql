@@ -279,7 +279,9 @@ CREATE TABLE `user` (
   `phone` varchar(20) DEFAULT '' COMMENT '手机号',
   `invite_code` varchar(32) DEFAULT '' COMMENT '个人邀请码',
   `points` int unsigned DEFAULT '0' COMMENT '个人总积分',
-  `region_code` varchar(32) DEFAULT '' COMMENT '地域编码，用于分组生成三餐推荐（v1.1）',
+  `region_code` varchar(32) DEFAULT '' COMMENT '地域编码：市级 adcode（如 440100），用于分组生成三餐推荐（v1.1）',
+  `region_name` varchar(64) DEFAULT '' COMMENT '地域展示名（如 广东省广州市）',
+  `region_source` varchar(8) DEFAULT '' COMMENT '定位来源：gps/ip/manual',
   `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：1=正常 0=禁用',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -291,37 +293,22 @@ CREATE TABLE `user` (
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表';
 
 --
--- Table structure for table `daily_region_recommendation`
+-- Table structure for table `daily_region_meal`
 --
 
-CREATE TABLE `daily_region_recommendation` (
+CREATE TABLE `daily_region_meal` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `region_code` varchar(32) NOT NULL COMMENT '地域编码',
+  `region_code` varchar(32) NOT NULL COMMENT '地域编码：市级 adcode',
   `recommend_date` date NOT NULL COMMENT '推荐日期',
-  `season` varchar(8) NOT NULL COMMENT '生成时所处季节快照：春/夏/秋/冬',
-  `status` enum('success','failed') NOT NULL DEFAULT 'success' COMMENT '生成状态',
-  `generated_at` datetime NOT NULL COMMENT '生成时间',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_region_date` (`region_code`,`recommend_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='地域化三餐推荐记录表（v1.1）';
-
---
--- Table structure for table `daily_region_recommendation_item`
---
-
-CREATE TABLE `daily_region_recommendation_item` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `recommendation_id` bigint unsigned NOT NULL COMMENT '外键 -> daily_region_recommendation.id',
   `meal_type` enum('breakfast','lunch','dinner') NOT NULL COMMENT '餐段',
-  `dish_name` varchar(64) NOT NULL COMMENT 'AI生成的菜名（不关联dish表）',
-  `description` varchar(255) DEFAULT '' COMMENT '简要做法/推荐理由',
-  `sort_order` int unsigned DEFAULT '0' COMMENT '展示顺序',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `sort_order` int unsigned NOT NULL DEFAULT '0' COMMENT '同一餐段内展示顺序',
+  `dish_name` varchar(64) NOT NULL DEFAULT '' COMMENT 'AI生成的菜名（不关联dish表），失败占位行为空串',
+  `description` varchar(255) DEFAULT '' COMMENT '推荐理由/做法特点',
+  `status` enum('success','failed') NOT NULL DEFAULT 'success' COMMENT '生成状态：failed 时仅有 1 行占位记录',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '生成时间',
   PRIMARY KEY (`id`),
-  KEY `idx_recommendation_meal` (`recommendation_id`,`meal_type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='地域化三餐推荐明细表（v1.1）';
+  UNIQUE KEY `uk_region_date_meal_sort` (`region_code`,`recommend_date`,`meal_type`,`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='地域化三餐推荐表（v1.1，按地区+日期记录早中晚推荐菜）';
 
 --
 -- Dumping routines for database 'jiawei'
@@ -330,3 +317,5 @@ CREATE TABLE `daily_region_recommendation_item` (
 
 -- Dump completed on 2026-09-18 10:39:07
 -- 补充更新：2026-11-02（合并 v1.1 地域化三餐推荐迁移：user.region_code + daily_region_recommendation[_item]）
+-- 补充更新：2026-11-23（合并 2026112301_region_adcode_v1.1 迁移：user.region_code 改为市级 adcode，新增 user.region_name / user.region_source）
+-- 补充更新：2026-11-23（合并 2026112302_region_meal_merge_v1.1 迁移：daily_region_recommendation[_item] 合并为 daily_region_meal）
