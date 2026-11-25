@@ -1,0 +1,428 @@
+{
+    "metadata": {
+        "document_id": "page-layout-basic-layout",
+        "page_name": "管理后台基础布局",
+        "route": "/（全局框架，包裹所有后台页面）",
+        "version": "1.0",
+        "scenario": "from_requirement",
+        "questioning_mode": "draft_first",
+        "complexity_tier": "standard",
+        "generated_at": "2026-11-24",
+        "task_id": "20261124-001",
+        "status": "passed"
+    },
+    "project_context": {
+        "framework": {
+            "name": "React",
+            "version": "19.3.1",
+            "language": "TypeScript 7.0.2",
+            "build": "Vite 8.3.8"
+        },
+        "ui_library": {
+            "name": "antd",
+            "version": "6.7.2",
+            "icons": "@ant-design/icons",
+            "router": "react-router-dom 7.x"
+        },
+        "style_system": {
+            "styling": "CSS Modules (*.module.scss) + SCSS",
+            "tokens": "theme/antd-theme.ts（ConfigProvider token）+ styles/tokens.scss（--admin-* CSS 变量，同源生成）"
+        },
+        "project_conventions": {
+            "indent": "4 空格",
+            "quotes": "单引号",
+            "semicolons": "不写",
+            "variableNaming": "camelCase",
+            "constantNaming": "UPPER_SNAKE_CASE",
+            "fileNaming": "kebab-case",
+            "cssClass": "kebab-case",
+            "comment": "JSDoc"
+        },
+        "source": "provided"
+    },
+    "page_scope": {
+        "goal": "为后台所有业务页提供统一外壳：左侧导航、顶部面包屑与管理员菜单、内容区容器",
+        "users": [
+            "平台超级管理员"
+        ],
+        "entry": [
+            "登录成功后进入 /families"
+        ],
+        "permissions": [
+            "需登录，未登录或 401 跳转 /login"
+        ],
+        "data_sources": [
+            "GET /api/admin/auth/me"
+        ],
+        "devices": [
+            "desktop",
+            "tablet"
+        ]
+    },
+    "layout": {
+        "root_id": "lyt.basic.root",
+        "layout_type": "page",
+        "direction": "vertical",
+        "children": [
+            {
+                "id": "lyt.basic.main",
+                "name": "主体两栏",
+                "parent_id": "lyt.basic.root",
+                "layout_type": "container",
+                "direction": "horizontal",
+                "size": "flex:1",
+                "order": 1,
+                "responsive_behavior": "宽度小于 992px 时侧栏折叠为 64px 图标栏",
+                "children": [
+                    {
+                        "id": "lyt.basic.sider",
+                        "name": "左侧导航栏",
+                        "parent_id": "lyt.basic.main",
+                        "layout_type": "aside",
+                        "direction": "vertical",
+                        "size": "240px 固定，可折叠 64px",
+                        "order": 1,
+                        "responsive_behavior": "小于 992px 折叠为 64px 图标栏",
+                        "children": []
+                    },
+                    {
+                        "id": "lyt.basic.body",
+                        "name": "右侧主体",
+                        "parent_id": "lyt.basic.main",
+                        "layout_type": "container",
+                        "direction": "vertical",
+                        "size": "flex:1",
+                        "order": 2,
+                        "responsive_behavior": "保持 flex:1",
+                        "children": [
+                            {
+                                "id": "lyt.basic.header",
+                                "name": "顶部栏",
+                                "parent_id": "lyt.basic.body",
+                                "layout_type": "header",
+                                "direction": "horizontal",
+                                "size": "56px 固定",
+                                "order": 1,
+                                "responsive_behavior": "保持一行，右侧管理员菜单不被压缩",
+                                "children": []
+                            },
+                            {
+                                "id": "lyt.basic.content",
+                                "name": "内容区",
+                                "parent_id": "lyt.basic.body",
+                                "layout_type": "main",
+                                "direction": "vertical",
+                                "size": "flex:1，overflow:auto，padding 24px",
+                                "order": 2,
+                                "responsive_behavior": "padding 在 tablet 及以下减小为 16px",
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "components": [
+        {
+            "id": "cmp.basic.brand",
+            "layout_id": "lyt.basic.sider",
+            "type": "品牌标题",
+            "source": "page_local",
+            "reuse_reason": "仅基础布局使用，文本“家味小札 · 管理后台”",
+            "requirement_ref": "F1"
+        },
+        {
+            "id": "cmp.basic.menu",
+            "layout_id": "lyt.basic.sider",
+            "type": "导航菜单 Menu",
+            "source": "ui_library",
+            "ui_component": "antd Menu",
+            "requirement_ref": "F1"
+        },
+        {
+            "id": "cmp.basic.collapse",
+            "layout_id": "lyt.basic.sider",
+            "type": "折叠按钮",
+            "source": "ui_library",
+            "ui_component": "antd Button(icon)"
+        },
+        {
+            "id": "cmp.basic.breadcrumb",
+            "layout_id": "lyt.basic.header",
+            "type": "面包屑 Breadcrumb",
+            "source": "ui_library",
+            "ui_component": "antd Breadcrumb",
+            "requirement_ref": "F1"
+        },
+        {
+            "id": "cmp.basic.admin-dropdown",
+            "layout_id": "lyt.basic.header",
+            "type": "管理员菜单 Dropdown",
+            "source": "ui_library",
+            "ui_component": "antd Dropdown",
+            "async": true,
+            "requirement_ref": "F1"
+        },
+        {
+            "id": "cmp.basic.outlet",
+            "layout_id": "lyt.basic.content",
+            "type": "子路由出口 Outlet",
+            "source": "ui_library",
+            "ui_component": "react-router-dom Outlet"
+        }
+    ],
+    "interactions": [
+        {
+            "id": "it.basic.menu-click",
+            "source_id": "cmp.basic.menu",
+            "precondition": "已登录",
+            "steps": [
+                "点击菜单项",
+                "根据菜单 key 跳转对应路由"
+            ],
+            "success_feedback": "内容区渲染目标页面，菜单高亮",
+            "failure_feedback": "not_applicable：纯路由跳转",
+            "loading_behavior": "not_applicable",
+            "duplicate_guard": "相同路由不重复跳转",
+            "permission": "需登录",
+            "after_success": "not_applicable：路由变化即结果",
+            "no_method_reason": "纯前端路由跳转，不调用接口"
+        },
+        {
+            "id": "it.basic.goto-change-password",
+            "source_id": "cmp.basic.admin-dropdown",
+            "precondition": "已登录",
+            "steps": [
+                "展开管理员菜单",
+                "点击“修改密码”"
+            ],
+            "success_feedback": "跳转 /change-password",
+            "failure_feedback": "not_applicable",
+            "loading_behavior": "not_applicable",
+            "duplicate_guard": "not_applicable",
+            "permission": "需登录",
+            "after_success": "not_applicable",
+            "target_route": "/change-password",
+            "no_method_reason": "纯前端路由跳转"
+        },
+        {
+            "id": "it.basic.logout",
+            "source_id": "cmp.basic.admin-dropdown",
+            "precondition": "已登录",
+            "steps": [
+                "展开管理员菜单",
+                "点击“退出登录”",
+                "调用登出接口",
+                "清除本地 token",
+                "跳转 /login"
+            ],
+            "success_feedback": "提示“已退出登录”并跳转登录页",
+            "failure_feedback": "接口失败也清除本地 token 并跳转登录页",
+            "loading_behavior": "按钮进入 loading 并禁用",
+            "duplicate_guard": "请求进行中禁止重复点击",
+            "permission": "需登录",
+            "after_success": "清除 auth store 与 localStorage token",
+            "method_id": "mth.basic.logout"
+        }
+    ],
+    "methods": [
+        {
+            "id": "mth.basic.load-admin",
+            "name": "loadCurrentAdmin",
+            "trigger_type": "lifecycle",
+            "lifecycle_hook": "useEffect(mount)",
+            "target_id": "cmp.basic.admin-dropdown",
+            "params": "无",
+            "returns": "{ adminId, username, lastLoginAt }",
+            "state_changes": "写入 auth store 的 admin 信息",
+            "error_cases": [
+                "401 跳转登录"
+            ],
+            "data_mode": "api",
+            "endpoint": "GET /api/admin/auth/me"
+        },
+        {
+            "id": "mth.basic.logout",
+            "name": "logout",
+            "trigger_type": "interaction",
+            "interaction_id": "it.basic.logout",
+            "target_id": "cmp.basic.admin-dropdown",
+            "params": "无",
+            "returns": "void",
+            "state_changes": "清空 token 与 admin",
+            "error_cases": [
+                "网络错误仍本地登出"
+            ],
+            "data_mode": "api",
+            "endpoint": "POST /api/admin/auth/logout"
+        }
+    ],
+    "overlays": [],
+    "states": [
+        {
+            "id": "st.basic.admin-loading",
+            "target_id": "cmp.basic.admin-dropdown",
+            "state_type": "loading",
+            "applicability": "applicable",
+            "description": "显示占位“管理员”"
+        },
+        {
+            "id": "st.basic.admin-empty",
+            "target_id": "cmp.basic.admin-dropdown",
+            "state_type": "empty",
+            "applicability": "not_applicable",
+            "reason": "未登录时不会渲染基础布局"
+        },
+        {
+            "id": "st.basic.admin-error",
+            "target_id": "cmp.basic.admin-dropdown",
+            "state_type": "error",
+            "applicability": "applicable",
+            "description": "显示“未知管理员”，不阻塞页面"
+        }
+    ],
+    "responsive": {
+        "breakpoints": [
+            {
+                "name": "desktop",
+                "min_width": 1200
+            },
+            {
+                "name": "tablet",
+                "min_width": 768,
+                "max_width": 1199
+            },
+            {
+                "name": "mobile",
+                "max_width": 767
+            }
+        ],
+        "rules": [
+            {
+                "layout_id": "lyt.basic.sider",
+                "behavior": "小于 992px 折叠为 64px 图标栏"
+            },
+            {
+                "layout_id": "lyt.basic.content",
+                "behavior": "小于 768px 时 padding 由 24px 变为 16px"
+            }
+        ]
+    },
+    "visual_tokens": {
+        "colors": {
+            "primary": "#ff6b35",
+            "primaryHover": "#ff8555",
+            "primaryActive": "#e85a2a",
+            "primaryBg": "#fff3ee",
+            "success": "#4cd964",
+            "warning": "#f0ad4e",
+            "danger": "#dd524d",
+            "info": "#1890ff",
+            "pageBg": "#f8f8f8",
+            "cardBg": "#ffffff",
+            "headerBg": "#ffffff",
+            "siderBg": "#1f1f1f",
+            "siderText": "#bfbfbf",
+            "siderTextActive": "#ffffff",
+            "siderSelectedBg": "#ff6b35",
+            "tableHeaderBg": "#fafafa",
+            "rowHoverBg": "#fafafa",
+            "border": "#e5e5e5",
+            "divider": "#f0f0f0",
+            "textPrimary": "#333333",
+            "textSecondary": "#999999",
+            "textDisabled": "#bfbfbf",
+            "mask": "rgba(0,0,0,0.45)"
+        },
+        "typography": {
+            "fontFamily": "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            "pageTitle": "20px/28px 600",
+            "cardTitle": "16px/24px 600",
+            "body": "14px/22px 400",
+            "caption": "12px/20px 400",
+            "number": "14px/22px 500",
+            "tableHeader": "14px/22px 500"
+        },
+        "spacing": {
+            "xs": "4px",
+            "sm": "8px",
+            "md": "12px",
+            "lg": "16px",
+            "xl": "24px",
+            "pagePadding": "24px",
+            "cardGap": "16px",
+            "formItemGap": "16px"
+        },
+        "radius": {
+            "sm": "4px",
+            "md": "8px",
+            "lg": "12px",
+            "pill": "999px"
+        },
+        "shadow": {
+            "card": "0 1px 2px rgba(0,0,0,0.04)",
+            "popup": "0 6px 16px rgba(0,0,0,0.08)"
+        },
+        "borders": {
+            "card": "1px solid #e5e5e5",
+            "divider": "1px solid #f0f0f0",
+            "input": "1px solid #e5e5e5"
+        },
+        "density": "default",
+        "component_variants": [
+            {
+                "component": "Button",
+                "variants": [
+                    "primary",
+                    "default",
+                    "text",
+                    "link",
+                    "danger"
+                ]
+            },
+            {
+                "component": "Table",
+                "variants": [
+                    "default",
+                    "small"
+                ]
+            },
+            {
+                "component": "Tag",
+                "variants": [
+                    "success",
+                    "warning",
+                    "error",
+                    "default",
+                    "processing"
+                ]
+            }
+        ]
+    },
+    "business_rules": [
+        {
+            "id": "br.basic.001",
+            "rule": "管理员 token 有效期 8 小时，过期或接口返回 401 时清空 token 并跳转 /login",
+            "source": "requirement",
+            "confirm_status": "confirmed"
+        }
+    ],
+    "change_log": [],
+    "open_questions": [],
+    "assumptions": [
+        {
+            "id": "asm.basic.001",
+            "content": "侧栏菜单项与路由表同源维护（router/routes.ts）",
+            "confirm_status": "confirmed"
+        }
+    ],
+    "evidence": [
+        {
+            "id": "ev.basic.001",
+            "source": "docs/lijianxin/product-designer/admin-console_20261123/01_模块设计.md",
+            "note": "F1 管理员登录与会话"
+        }
+    ],
+    "validation": {}
+}

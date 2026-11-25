@@ -1,0 +1,553 @@
+{
+    "metadata": {
+        "document_id": "page-layout-list-page",
+        "page_name": "管理后台列表页模板",
+        "route": "/{资源}（/families /dishes /users /orders /reward-orders /audit-logs）",
+        "version": "1.0",
+        "scenario": "from_requirement",
+        "questioning_mode": "draft_first",
+        "complexity_tier": "standard",
+        "generated_at": "2026-11-24",
+        "task_id": "20261124-001",
+        "status": "passed"
+    },
+    "project_context": {
+        "framework": {
+            "name": "React",
+            "version": "19.3.1",
+            "language": "TypeScript 7.0.2",
+            "build": "Vite 8.3.8"
+        },
+        "ui_library": {
+            "name": "antd",
+            "version": "6.7.2",
+            "icons": "@ant-design/icons",
+            "router": "react-router-dom 7.x"
+        },
+        "style_system": {
+            "styling": "CSS Modules (*.module.scss) + SCSS",
+            "tokens": "theme/antd-theme.ts（ConfigProvider token）+ styles/tokens.scss（--admin-* CSS 变量，同源生成）"
+        },
+        "project_conventions": {
+            "indent": "4 空格",
+            "quotes": "单引号",
+            "semicolons": "不写",
+            "variableNaming": "camelCase",
+            "constantNaming": "UPPER_SNAKE_CASE",
+            "fileNaming": "kebab-case",
+            "cssClass": "kebab-case",
+            "comment": "JSDoc"
+        },
+        "source": "provided"
+    },
+    "page_scope": {
+        "goal": "统一列表页结构与交互：页面标题区 + 筛选栏 + 数据表格 + 分页",
+        "users": [
+            "平台超级管理员"
+        ],
+        "entry": [
+            "侧栏菜单进入"
+        ],
+        "permissions": [
+            "需登录"
+        ],
+        "data_sources": [
+            "GET /api/admin/{listEndpoint}"
+        ],
+        "devices": [
+            "desktop",
+            "tablet"
+        ]
+    },
+    "layout": {
+        "root_id": "lyt.list.root",
+        "layout_type": "page",
+        "direction": "vertical",
+        "children": [
+            {
+                "id": "lyt.list.header",
+                "name": "页面标题区",
+                "parent_id": "lyt.list.root",
+                "layout_type": "container",
+                "direction": "horizontal",
+                "size": "auto",
+                "order": 1,
+                "responsive_behavior": "小于 768px 时标题与主操作换行堆叠",
+                "children": []
+            },
+            {
+                "id": "lyt.list.search",
+                "name": "筛选栏卡片",
+                "parent_id": "lyt.list.root",
+                "layout_type": "container",
+                "direction": "vertical",
+                "size": "auto",
+                "order": 2,
+                "responsive_behavior": "小于 768px 表单项单列堆叠",
+                "children": []
+            },
+            {
+                "id": "lyt.list.table",
+                "name": "表格卡片",
+                "parent_id": "lyt.list.root",
+                "layout_type": "container",
+                "direction": "vertical",
+                "size": "flex:1",
+                "order": 3,
+                "responsive_behavior": "表格横向滚动",
+                "children": [
+                    {
+                        "id": "lyt.list.table.toolbar",
+                        "name": "表格工具条",
+                        "parent_id": "lyt.list.table",
+                        "layout_type": "container",
+                        "direction": "horizontal",
+                        "size": "auto",
+                        "order": 1,
+                        "responsive_behavior": "保持一行，右侧刷新按钮固定",
+                        "children": []
+                    },
+                    {
+                        "id": "lyt.list.table.body",
+                        "name": "表格主体",
+                        "parent_id": "lyt.list.table",
+                        "layout_type": "container",
+                        "direction": "vertical",
+                        "size": "flex:1",
+                        "order": 2,
+                        "responsive_behavior": "横向滚动",
+                        "children": []
+                    },
+                    {
+                        "id": "lyt.list.table.footer",
+                        "name": "分页区",
+                        "parent_id": "lyt.list.table",
+                        "layout_type": "container",
+                        "direction": "horizontal",
+                        "size": "auto",
+                        "order": 3,
+                        "responsive_behavior": "右对齐，小于 768px 居中",
+                        "children": []
+                    }
+                ]
+            }
+        ]
+    },
+    "components": [
+        {
+            "id": "cmp.list.title",
+            "layout_id": "lyt.list.header",
+            "type": "页面标题 Typography.Title",
+            "source": "ui_library",
+            "ui_component": "antd Typography.Title"
+        },
+        {
+            "id": "cmp.list.primary-action",
+            "layout_id": "lyt.list.header",
+            "type": "主操作按钮组",
+            "source": "ui_library",
+            "ui_component": "antd Button"
+        },
+        {
+            "id": "cmp.list.search-form",
+            "layout_id": "lyt.list.search",
+            "type": "筛选表单 Form（字段由具体页面注入）",
+            "source": "ui_library",
+            "ui_component": "antd Form"
+        },
+        {
+            "id": "cmp.list.search-query",
+            "layout_id": "lyt.list.search",
+            "type": "查询按钮",
+            "source": "ui_library",
+            "ui_component": "antd Button(type=primary)"
+        },
+        {
+            "id": "cmp.list.search-reset",
+            "layout_id": "lyt.list.search",
+            "type": "重置按钮",
+            "source": "ui_library",
+            "ui_component": "antd Button"
+        },
+        {
+            "id": "cmp.list.toolbar-refresh",
+            "layout_id": "lyt.list.table.toolbar",
+            "type": "刷新按钮",
+            "source": "ui_library",
+            "ui_component": "antd Button(icon=Reload)"
+        },
+        {
+            "id": "cmp.list.data-table",
+            "layout_id": "lyt.list.table.body",
+            "type": "数据表格 Table",
+            "source": "ui_library",
+            "ui_component": "antd Table",
+            "async": true
+        },
+        {
+            "id": "cmp.list.pagination",
+            "layout_id": "lyt.list.table.footer",
+            "type": "分页 Pagination",
+            "source": "ui_library",
+            "ui_component": "antd Pagination"
+        }
+    ],
+    "interactions": [
+        {
+            "id": "it.list.query",
+            "source_id": "cmp.list.search-query",
+            "precondition": "页面已加载",
+            "steps": [
+                "收集筛选字段",
+                "重置分页为第 1 页",
+                "请求列表接口"
+            ],
+            "success_feedback": "表格与分页刷新",
+            "failure_feedback": "错误提示，保留上次数据",
+            "loading_behavior": "表格进入 loading",
+            "duplicate_guard": "请求中禁用查询按钮",
+            "permission": "需登录",
+            "after_success": "not_applicable",
+            "method_id": "mth.list.query"
+        },
+        {
+            "id": "it.list.reset",
+            "source_id": "cmp.list.search-reset",
+            "precondition": "页面已加载",
+            "steps": [
+                "清空筛选字段",
+                "重置分页为第 1 页",
+                "请求列表接口"
+            ],
+            "success_feedback": "筛选清空，表格刷新",
+            "failure_feedback": "错误提示",
+            "loading_behavior": "表格进入 loading",
+            "duplicate_guard": "请求中禁用重置按钮",
+            "permission": "需登录",
+            "after_success": "not_applicable",
+            "method_id": "mth.list.reset"
+        },
+        {
+            "id": "it.list.page-change",
+            "source_id": "cmp.list.pagination",
+            "precondition": "有分页数据",
+            "steps": [
+                "切换页码或每页条数",
+                "携带新分页参数请求接口"
+            ],
+            "success_feedback": "表格刷新为目标页",
+            "failure_feedback": "错误提示，停留原页",
+            "loading_behavior": "表格进入 loading",
+            "duplicate_guard": "请求中忽略重复切换",
+            "permission": "需登录",
+            "after_success": "not_applicable",
+            "method_id": "mth.list.page-change"
+        },
+        {
+            "id": "it.list.refresh",
+            "source_id": "cmp.list.toolbar-refresh",
+            "precondition": "页面已加载",
+            "steps": [
+                "按当前筛选与分页重新请求"
+            ],
+            "success_feedback": "表格刷新",
+            "failure_feedback": "错误提示",
+            "loading_behavior": "表格进入 loading",
+            "duplicate_guard": "请求中禁用刷新按钮",
+            "permission": "需登录",
+            "after_success": "not_applicable",
+            "method_id": "mth.list.refresh"
+        },
+        {
+            "id": "it.list.row-detail",
+            "source_id": "cmp.list.data-table",
+            "precondition": "行存在",
+            "steps": [
+                "点击行或“详情”操作",
+                "跳转详情路由"
+            ],
+            "success_feedback": "进入详情页",
+            "failure_feedback": "not_applicable",
+            "loading_behavior": "not_applicable",
+            "duplicate_guard": "not_applicable",
+            "permission": "需登录",
+            "after_success": "not_applicable",
+            "target_route": "/{资源}/{id}",
+            "no_method_reason": "纯前端路由跳转"
+        },
+        {
+            "id": "it.list.primary-click",
+            "source_id": "cmp.list.primary-action",
+            "precondition": "页面已加载",
+            "steps": [
+                "点击主操作按钮"
+            ],
+            "success_feedback": "由具体页面定义",
+            "failure_feedback": "由具体页面定义",
+            "loading_behavior": "由具体页面定义",
+            "duplicate_guard": "由具体页面定义",
+            "permission": "需登录",
+            "after_success": "由具体页面定义",
+            "no_method_reason": "各列表主操作不同（多数列表无新建），由具体页面覆盖"
+        }
+    ],
+    "methods": [
+        {
+            "id": "mth.list.load",
+            "name": "loadList",
+            "trigger_type": "lifecycle",
+            "lifecycle_hook": "useEffect(mount)",
+            "target_id": "cmp.list.data-table",
+            "params": "{ page=1, pageSize=20, ...filters }",
+            "returns": "{ list, total, page, pageSize }",
+            "state_changes": "写入表格数据与分页",
+            "error_cases": [
+                "401 跳登录",
+                "网络错误显示重试"
+            ],
+            "data_mode": "api",
+            "endpoint": "GET /api/admin/{listEndpoint}?page&pageSize&keyword&status"
+        },
+        {
+            "id": "mth.list.query",
+            "name": "handleQuery",
+            "trigger_type": "interaction",
+            "interaction_id": "it.list.query",
+            "target_id": "cmp.list.data-table",
+            "params": "filters",
+            "returns": "void",
+            "state_changes": "重置分页并请求",
+            "error_cases": [
+                "401 跳登录",
+                "网络错误提示"
+            ],
+            "data_mode": "api",
+            "endpoint": "GET /api/admin/{listEndpoint}?page&pageSize&...filters"
+        },
+        {
+            "id": "mth.list.reset",
+            "name": "handleReset",
+            "trigger_type": "interaction",
+            "interaction_id": "it.list.reset",
+            "target_id": "cmp.list.data-table",
+            "params": "无",
+            "returns": "void",
+            "state_changes": "清空筛选并请求",
+            "error_cases": [
+                "401 跳登录",
+                "网络错误提示"
+            ],
+            "data_mode": "api",
+            "endpoint": "GET /api/admin/{listEndpoint}?page=1&pageSize"
+        },
+        {
+            "id": "mth.list.page-change",
+            "name": "handlePageChange",
+            "trigger_type": "interaction",
+            "interaction_id": "it.list.page-change",
+            "target_id": "cmp.list.data-table",
+            "params": "page, pageSize",
+            "returns": "void",
+            "state_changes": "更新分页参数并请求",
+            "error_cases": [
+                "401 跳登录",
+                "网络错误提示"
+            ],
+            "data_mode": "api",
+            "endpoint": "GET /api/admin/{listEndpoint}?page&pageSize"
+        },
+        {
+            "id": "mth.list.refresh",
+            "name": "handleRefresh",
+            "trigger_type": "interaction",
+            "interaction_id": "it.list.refresh",
+            "target_id": "cmp.list.data-table",
+            "params": "无",
+            "returns": "void",
+            "state_changes": "保持当前筛选与分页重新请求",
+            "error_cases": [
+                "401 跳登录",
+                "网络错误提示"
+            ],
+            "data_mode": "api",
+            "endpoint": "GET /api/admin/{listEndpoint}?page&pageSize&...filters"
+        }
+    ],
+    "overlays": [],
+    "states": [
+        {
+            "id": "st.list.table-loading",
+            "target_id": "cmp.list.data-table",
+            "state_type": "loading",
+            "applicability": "applicable",
+            "description": "表格骨架/旋转器，筛选按钮禁用"
+        },
+        {
+            "id": "st.list.table-empty",
+            "target_id": "cmp.list.data-table",
+            "state_type": "empty",
+            "applicability": "applicable",
+            "description": "Empty 组件，文案“暂无数据”，提供重置筛选操作"
+        },
+        {
+            "id": "st.list.table-error",
+            "target_id": "cmp.list.data-table",
+            "state_type": "error",
+            "applicability": "applicable",
+            "description": "错误文案 + 重试按钮"
+        }
+    ],
+    "responsive": {
+        "breakpoints": [
+            {
+                "name": "desktop",
+                "min_width": 1200
+            },
+            {
+                "name": "tablet",
+                "min_width": 768,
+                "max_width": 1199
+            },
+            {
+                "name": "mobile",
+                "max_width": 767
+            }
+        ],
+        "rules": [
+            {
+                "layout_id": "lyt.list.header",
+                "behavior": "小于 768px 标题与主操作换行堆叠"
+            },
+            {
+                "layout_id": "lyt.list.search",
+                "behavior": "小于 768px 表单项单列"
+            },
+            {
+                "layout_id": "lyt.list.table.body",
+                "behavior": "窄屏表格横向滚动"
+            }
+        ]
+    },
+    "visual_tokens": {
+        "colors": {
+            "primary": "#ff6b35",
+            "primaryHover": "#ff8555",
+            "primaryActive": "#e85a2a",
+            "primaryBg": "#fff3ee",
+            "success": "#4cd964",
+            "warning": "#f0ad4e",
+            "danger": "#dd524d",
+            "info": "#1890ff",
+            "pageBg": "#f8f8f8",
+            "cardBg": "#ffffff",
+            "headerBg": "#ffffff",
+            "siderBg": "#1f1f1f",
+            "siderText": "#bfbfbf",
+            "siderTextActive": "#ffffff",
+            "siderSelectedBg": "#ff6b35",
+            "tableHeaderBg": "#fafafa",
+            "rowHoverBg": "#fafafa",
+            "border": "#e5e5e5",
+            "divider": "#f0f0f0",
+            "textPrimary": "#333333",
+            "textSecondary": "#999999",
+            "textDisabled": "#bfbfbf",
+            "mask": "rgba(0,0,0,0.45)"
+        },
+        "typography": {
+            "fontFamily": "-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif",
+            "pageTitle": "20px/28px 600",
+            "cardTitle": "16px/24px 600",
+            "body": "14px/22px 400",
+            "caption": "12px/20px 400",
+            "number": "14px/22px 500",
+            "tableHeader": "14px/22px 500"
+        },
+        "spacing": {
+            "xs": "4px",
+            "sm": "8px",
+            "md": "12px",
+            "lg": "16px",
+            "xl": "24px",
+            "pagePadding": "24px",
+            "cardGap": "16px",
+            "formItemGap": "16px"
+        },
+        "radius": {
+            "sm": "4px",
+            "md": "8px",
+            "lg": "12px",
+            "pill": "999px"
+        },
+        "shadow": {
+            "card": "0 1px 2px rgba(0,0,0,0.04)",
+            "popup": "0 6px 16px rgba(0,0,0,0.08)"
+        },
+        "borders": {
+            "card": "1px solid #e5e5e5",
+            "divider": "1px solid #f0f0f0",
+            "input": "1px solid #e5e5e5"
+        },
+        "density": "default",
+        "component_variants": [
+            {
+                "component": "Button",
+                "variants": [
+                    "primary",
+                    "default",
+                    "text",
+                    "link",
+                    "danger"
+                ]
+            },
+            {
+                "component": "Table",
+                "variants": [
+                    "default",
+                    "small"
+                ]
+            },
+            {
+                "component": "Tag",
+                "variants": [
+                    "success",
+                    "warning",
+                    "error",
+                    "default",
+                    "processing"
+                ]
+            }
+        ]
+    },
+    "business_rules": [
+        {
+            "id": "br.list.001",
+            "rule": "分页 page 默认 1，pageSize 默认 20，上限 100",
+            "source": "requirement",
+            "confirm_status": "confirmed"
+        },
+        {
+            "id": "br.list.002",
+            "rule": "手机号在列表中脱敏为 138****0000，详情页展示完整",
+            "source": "requirement",
+            "confirm_status": "confirmed"
+        }
+    ],
+    "change_log": [],
+    "open_questions": [],
+    "assumptions": [
+        {
+            "id": "asm.list.001",
+            "content": "列表页共用 useTableQuery hook 管理分页与筛选状态",
+            "confirm_status": "confirmed"
+        }
+    ],
+    "evidence": [
+        {
+            "id": "ev.list.001",
+            "source": "docs/lijianxin/product-designer/admin-console_20261123/03_API接口文档.md",
+            "note": "列表接口分页参数与响应结构"
+        }
+    ],
+    "validation": {}
+}
