@@ -6,7 +6,7 @@ React 19 + TypeScript + antd 6 + CSS Modules + Vite 8 的管理后台，调用 `
 
 ```bash
 npm install          # 首次安装依赖
-npm run dev          # 开发（默认 5173，/api/admin 代理到 http://localhost:3000）
+npm run dev          # 开发（默认 5174，/api/admin 代理到 http://localhost:3000）
 npm run typecheck    # tsc --noEmit
 npm run build        # 类型检查 + 生产构建
 npm run preview      # 预览构建产物
