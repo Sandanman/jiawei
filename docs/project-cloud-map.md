@@ -254,6 +254,53 @@ flowchart TD
 - `run-now` 接口（`confirmed`，`routes/regionRecommendation.ts:18` 注释）：测试用途，跳过定时等待立即触发全量 `region_code` 批量生成，代码注释显式标注"上线前应移除"，当前仍挂载在正式路由前缀 `/api/v1` 下。
 - `P9B` 菜单管理页新增"今日推荐"弹窗三个交互：`handleShowRecommendation`（查询 today）、`handleReportLocation`（`uni.getLocation` 获取 GPS 后上报）、`handleRetryRecommendation`（失败后调用 run-now 重试），均为 `confirmed`，证据 `fe/src/pages/menu/index.vue:584-621`。
 
+### 2.7 管理后台域（admin-console P1）
+
+```mermaid
+flowchart TD
+    subgraph ADMIN_FE["admin/ 前端（React19 + antd6，独立工程）"]
+        A_LOGIN["登录/修改密码\npages/login、change-password"]
+        A_LIST["家庭/菜品/用户/订单/兑换/审计\npages/*/list|detail"]
+        A_HTTP["api/http.ts\naxios 拦截器：401→清 token 跳登录\ncode≠0→message.error"]
+        A_DANGER["DangerConfirm\n影响范围 + reason 4-200字"]
+    end
+
+    subgraph ADMIN_BE["后端 /api/admin（routes/admin/index.ts）"]
+        A_CORS{"adminCors\n白名单 ADMIN_CORS_ORIGINS"}
+        A_AUTH{"adminAuthRequired\naud=admin + status=1 + token_version"}
+        A_CTRL["controllers/admin/*\nparsePage/requireReason"]
+        A_SVC["services/admin/*\nwithTransaction→条件更新→writeAudit"]
+        A_ERR["adminError\nBizError→HTTP200 code:-1"]
+        D6_ORDER["orderService.cancelOrderCore\n（业务端同源）"]
+        D6_REWARD["rewardService.cancelRewardOrderCore\n（业务端同源）"]
+        DB_ADMIN[("admin_user")]
+        DB_AUDIT[("admin_audit_log")]
+        DB_BIZ[("family/dish/user/order/reward_order/points_record…")]
+    end
+
+    A_LOGIN -->|"POST /auth/login|me|password"| A_CORS
+    A_LIST --> A_HTTP
+    A_DANGER --> A_HTTP
+    A_HTTP -->|"Authorization: Bearer 管理员JWT"| A_CORS
+    A_CORS --> A_AUTH
+    A_AUTH -->|"校验"| DB_ADMIN
+    A_AUTH --> A_CTRL --> A_SVC
+    A_SVC -->|"条件更新 WHERE status=?"| DB_BIZ
+    A_SVC -->|"同一事务内写审计，失败则整体回滚"| DB_AUDIT
+    A_SVC -->|"强制取消订单"| D6_ORDER
+    A_SVC -->|"撤销兑换"| D6_REWARD
+    D6_ORDER --> DB_BIZ
+    D6_REWARD --> DB_BIZ
+    A_SVC -.->|"普通 Error→BizError 转换"| A_ERR
+```
+
+- 范围（`confirmed`）：仅 P1（F1 登录会话 / F2 家庭 / F3 菜品 / F4 用户账号 / F5 订单+兑换 / F8 审计）；P2/P3 未实现。路由 `server/src/routes/admin/index.ts:12-18`，挂载 `server/src/app.ts:70`。
+- 鉴权隔离（`confirmed`）：管理员 JWT 使用独立密钥 `ADMIN_JWT_SECRET`、载荷带 `aud:'admin'`，业务端 token 访问返回 HTTP 401；`adminAuthRequired` 每次请求回查 `admin_user.status` 与 `token_version`，禁用/改密立即失效。登录 5 次失败锁定 15 分钟。
+- 响应约定（`confirmed`）：业务错误 HTTP 200 + `code:-1`（`BizError` + `adminError`），鉴权失败 HTTP 401 + `{code:401,data:null}`；`res.fail` 新增可选 `data` 参数用于返回引用明细。
+- D6（`confirmed`）：`orderService.cancelOrderCore` / `rewardService.cancelRewardOrderCore` 由业务端 `cancelOrder` / `cancelRewardOrder` 抽出，业务端行为不变；后台传 `descriptionPrefix='[平台取消] '/'[平台撤销] '`，且 `cancelAdminOrder`/`cancelAdminRewardOrder` 将核心抛出的普通 `Error` 转成 `BizError`。
+- 审计（`confirmed`）：`writeAudit(conn, …)` 必须传事务连接，写入前剔除 `password/passwordHash/password_hash/token` 键；重置密码审计不含明文。
+- 数据库（需人工执行，已在开发库执行）：`server/docs/migrations/2026112303_admin_console_v1.0.sql` 新增 `admin_user`、`admin_audit_log`；初始管理员通过 `npm run admin:create -- <username>` 创建，密码来自环境变量或交互输入，不落盘。
+
 ---
 
 ## 3. 文件/符号索引
@@ -287,6 +334,18 @@ flowchart TD
 - `server/docs/migrations/2026112302_region_meal_merge_v1.1.sql`：两张推荐表合并为 `daily_region_meal`（保留 status 与 description，失败用占位行；旧表 DROP 语句已注释，需人工确认后执行，未自动生效）
 - `fe/src/api/regionRecommendation.ts`：`getTodayRegionRecommendation`/`reportUserRegion`/`runRegionRecommendationNow`
 
+### 管理后台（admin/ 与 server 的 admin 子目录）
+
+- `admin/src/api/{http,auth,family,dish,user,order,reward-order,audit,types}.ts`：axios 实例（`/api/admin`，401 跳登录）与各模块接口
+- `admin/src/router/{index,routes}.tsx`：路由表 + 菜单元数据（同源）+ 鉴权守卫；`admin/src/stores/{auth-store,token}`：登录态（localStorage `jiawei_admin_token`）
+- `admin/src/components/{danger-confirm,data-table,search-form,status-tag,json-diff,page-container}`：公共组件；`admin/src/theme/tokens.ts`：设计令牌单一来源（antd 主题 + `--admin-*` CSS 变量）
+- `admin/src/pages/{login,change-password,families,dishes,users,orders,reward-orders,audit-logs,exception}`：P1 业务页
+- `server/src/routes/admin/*`、`controllers/admin/*`、`services/admin/*`：F1-F5/F8 接口、校验与事务业务
+- `server/src/middlewares/{adminAuth,adminError}.ts`、`server/src/utils/{adminJwt,bizError}.ts`、`server/src/db/index.ts:withTransaction`：管理员鉴权、业务异常、事务 helper
+- `server/src/services/admin/auditService.ts:writeAudit`、`auditQueryService.ts`：审计写入（必须传事务连接）与查询
+- `server/src/services/orderService.ts:cancelOrderCore`、`rewardService.ts:cancelRewardOrderCore`：D6 抽取的取消事务核心
+- `server/src/scripts/createAdmin.ts`：`npm run admin:create`；`server/docs/migrations/2026112303_admin_console_v1.0.sql`：`admin_user`/`admin_audit_log`
+
 ---
 
 ## 4. 未确认项与扫描限制
@@ -301,6 +360,9 @@ flowchart TD
 | `inferred`→`confirmed`：后端是否复核前端隐藏按钮的权限 | 反向检查管理类页面请求参数（无权限码）+ `permissionService.ts`数据库层独立校验，已升级为`confirmed` |
 | `inferred`：401跳转`mock-login`是否为遗留代码 | 反向检查`request.ts`注释及`mock-login/index.vue:2-5`废弃说明，跳转目标是否有意如此无法确认，保留`inferred`（见2.1图注） |
 | 项目类型识别置信度是否低于阈值 | 否，置信度高，未触发候选询问流程 |
+| `confirmed`：admin P1 接口验收 | 2026-11-25 对照 `04_验收条件.md` 在本地开发库跑通 53 项接口断言（含并发注销、审计失败回滚、D1 禁用即失效），脚本为临时文件未入库；D6 业务端回归 4 项（下单→取消、兑换→撤销）通过 |
+| `unconfirmed`：admin 前端浏览器交互 | 仅验证 `tsc --noEmit`、`npm run build` 通过与 vite 代理联通（登录接口经 5173 代理成功），未在浏览器逐页点击验证弹窗/样式/分页，属未验证 |
+| `unconfirmed`：admin 部署域名与 CORS | 通过 `ADMIN_CORS_ORIGINS` 配置，生产域名未定 |
 
 ---
 
@@ -311,3 +373,4 @@ flowchart TD
 - 分支：master | 日期：2026-10-19 | 变更类型：重构 | 摘要：按 skill v2.0 规则全面重建：文档结构由 12 节精简为 4 节（范围与模式/关系图/文件索引/未确认项）；关系图拆分为 5 张按业务域组织的图，节点粒度到具体页面/路由，边标注真实接口路径与函数名；原 `docs/cloud-map/` 下 6 个业务域子文档（含分页面 Mermaid 图和核心数据流 sequenceDiagram）内容已完全并入本次关系图，判定为冗余并移除；引入节点级「变更日志子节点」机制，自本次基线之后的实际代码变更开始记录（本次梳理发现的历史实现缺口仍以虚线边+图注呈现，不计入变更日志）。
 - 分支：master | 日期：2026-11-02 | 变更类型：新增 | 摘要：补充地域化三餐推荐域（v1.1）：新增 2.6 节关系图，覆盖菜单管理页新增推荐弹窗、`/api/v1` 路由（today/用户上报位置/测试用 run-now）、`regionRecommendationService`、对接 Responses API 协议的 `aiService`、每日03:00内存态定时任务 `regionRecommendationCron`，以及对应数据库迁移脚本（`user.region_code` 字段 + 两张新表）；已同步补充文件/符号索引。本次实际代码变更包括：修复 `aiService.ts` 请求/响应协议由 Chat Completions 误用改为 Responses API 格式（`input` 字段 + 按 `type==='message'` 过滤 `output`），以及清理该文件内调试用 `console.log`。
 - 分支：master | 日期：2026-11-02 | 变更类型：修复 | 摘要：修复 fe 页面刷新后需要重新登录的问题：`fe/src/stores/user.ts` 新增 `restore()`，登录成功（`applyLoginResult`）和 `switchFamily` 时将 token/familyId 写入 `uni.setStorageSync`，`logout()` 时清除；补齐 `fetchProfile` 中缺失的 `role` 回填逻辑；`fe/src/App.vue` 的 `onLaunch` 中调用 `restore()+fetchProfile()` 恢复并校验登录态，校验失败则 `logout()`。详见 2.1 节关系图新增的 `APP_LAUNCH` 节点与 `STORE_U` 变更日志子节点，及第4节未确认项状态更新。
+- 分支：master | 日期：2026-11-25 | 变更类型：新增 | 摘要：补充管理后台域（admin-console P1）：新增 2.7 节关系图与文件索引，覆盖独立 `admin/` React 工程、`/api/admin` 路由（F1 登录会话/F2 家庭/F3 菜品/F4 用户账号/F5 订单与兑换/F8 审计）、管理员 JWT 隔离鉴权、`BizError`+`adminError` 响应约定、事务内审计 `writeAudit`，以及 D6 从业务端抽出的 `cancelOrderCore`/`cancelRewardOrderCore`（业务端行为不变，回归通过）；新增 `admin_user`/`admin_audit_log` 迁移脚本与 `createAdmin` 脚本。验收：接口 53 项 + D6 回归 4 项通过，前端浏览器交互未验证。
