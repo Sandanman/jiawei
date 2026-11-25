@@ -1,0 +1,23 @@
+.card {
+    box-shadow: var(--admin-shadow-md);
+    border: none;
+}
+
+.title {
+    text-align: center;
+    margin-bottom: var(--admin-space-xl);
+}
+
+.subtitle {
+    display: block;
+    margin-top: var(--admin-space-xs);
+    font-size: var(--admin-font-aux-size);
+    color: var(--admin-text-secondary);
+}
+
+.hint {
+    margin-top: var(--admin-space-md);
+    font-size: var(--admin-font-aux-size);
+    color: var(--admin-text-secondary);
+    line-height: var(--admin-font-aux-line);
+}

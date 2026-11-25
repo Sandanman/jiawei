@@ -1,0 +1,24 @@
+.impact {
+    padding: var(--admin-space-md);
+    background: var(--admin-color-primary-light);
+    border-radius: var(--admin-radius-sm);
+    margin-bottom: var(--admin-space-lg);
+    color: var(--admin-text);
+}
+
+.impactTitle {
+    font-weight: 600;
+    margin-bottom: var(--admin-space-xs);
+}
+
+.impactList {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--admin-text-secondary);
+}
+
+.hint {
+    font-size: var(--admin-font-aux-size);
+    color: var(--admin-text-secondary);
+    margin-bottom: var(--admin-space-sm);
+}

@@ -1,0 +1,44 @@
+.wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--admin-space-lg);
+}
+
+.column {
+    min-width: 0;
+}
+
+.columnTitle {
+    font-weight: 600;
+    margin-bottom: var(--admin-space-sm);
+    color: var(--admin-text);
+}
+
+.empty {
+    color: var(--admin-text-secondary);
+    font-size: var(--admin-font-aux-size);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: var(--admin-space-sm);
+    padding: 6px 8px;
+    border-radius: var(--admin-radius-sm);
+    font-size: var(--admin-font-body-size);
+}
+
+.rowChanged {
+    background: var(--admin-color-primary-light);
+}
+
+.key {
+    color: var(--admin-text-secondary);
+    word-break: break-all;
+}
+
+.value {
+    color: var(--admin-text);
+    word-break: break-all;
+    white-space: pre-wrap;
+}

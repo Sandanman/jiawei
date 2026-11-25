@@ -1,0 +1,18 @@
+.form {
+    padding: var(--admin-space-lg) var(--admin-space-lg) 0;
+    background: var(--admin-card-bg);
+    border-radius: var(--admin-radius-md);
+    box-shadow: var(--admin-shadow-sm);
+
+    :global(.ant-form-item) {
+        margin-bottom: var(--admin-space-md);
+        margin-inline-end: var(--admin-space-lg);
+    }
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: var(--admin-space-sm);
+    margin-bottom: var(--admin-space-md);
+}

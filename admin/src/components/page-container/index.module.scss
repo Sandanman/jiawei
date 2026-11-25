@@ -1,0 +1,50 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--admin-space-card-gap);
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--admin-space-lg);
+}
+
+.titleArea {
+    display: flex;
+    align-items: center;
+    gap: var(--admin-space-sm);
+    min-width: 0;
+}
+
+.back {
+    margin-top: 2px;
+}
+
+.title {
+    font-size: var(--admin-font-title-size);
+    line-height: var(--admin-font-title-line);
+    font-weight: 600;
+    color: var(--admin-text);
+}
+
+.description {
+    margin-top: var(--admin-space-xs);
+    font-size: var(--admin-font-aux-size);
+    line-height: var(--admin-font-aux-line);
+    color: var(--admin-text-secondary);
+}
+
+.extra {
+    display: flex;
+    align-items: center;
+    gap: var(--admin-space-sm);
+    flex-shrink: 0;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--admin-space-card-gap);
+}

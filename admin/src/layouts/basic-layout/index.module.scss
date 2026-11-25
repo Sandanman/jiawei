@@ -1,0 +1,81 @@
+.layout {
+    min-height: 100vh;
+}
+
+.sider {
+    position: sticky !important;
+    top: 0;
+    height: 100vh;
+    overflow: auto;
+}
+
+.logo {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: var(--admin-space-sm);
+    padding: 0 var(--admin-space-lg);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.logoMark {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--admin-radius-md);
+    background: var(--admin-color-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.header {
+    height: 56px;
+    padding: 0 var(--admin-space-xl) !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--admin-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: var(--admin-space-lg);
+}
+
+.adminTrigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--admin-space-sm);
+    cursor: pointer;
+    color: var(--admin-text);
+    padding: 4px 8px;
+    border-radius: var(--admin-radius-sm);
+}
+
+.adminTrigger:hover {
+    background: var(--admin-table-header);
+}
+
+.content {
+    padding: var(--admin-space-page);
+}
+
+.contentInner {
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+.loading {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
