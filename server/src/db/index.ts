@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise'
+import type { PoolConnection } from 'mysql2/promise'
 import { config } from '../config'
 
 export const pool = mysql.createPool(config.dbPool)
@@ -34,6 +35,25 @@ export async function insert(sql: string, params: any[] = []): Promise<number> {
 export async function update(sql: string, params: any[] = []): Promise<number> {
     const [result] = await pool.query(sql, params)
     return (result as any).affectedRows
+}
+
+/**
+ * 在同一个事务连接上执行 fn：自动 begin/commit/rollback/release
+ * 用法：await withTransaction(async (conn) => { await conn.query(...) })
+ */
+export async function withTransaction<T>(fn: (conn: PoolConnection) => Promise<T>): Promise<T> {
+    const conn = await pool.getConnection()
+    try {
+        await conn.beginTransaction()
+        const result = await fn(conn)
+        await conn.commit()
+        return result
+    } catch (err) {
+        await conn.rollback()
+        throw err
+    } finally {
+        conn.release()
+    }
 }
 
 /**

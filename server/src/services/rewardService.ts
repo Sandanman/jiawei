@@ -6,6 +6,7 @@
  * - 兑换记录：家庭成员可按本人/全部查看
  * - 状态流转：待领取（pending）可由本人撤销并退积分（cancelled）；管理员可确认已领取（received）
  */
+import type { PoolConnection } from 'mysql2/promise'
 import { pool, query, queryOne, insert, update } from '../db'
 import type { RewardRow, RewardOrderRow, RewardCategory, RewardOrderStatus } from '../types/db'
 import type { Reward, RewardOrder, RedeemRewardResult } from '../types/api'
@@ -420,6 +421,71 @@ export async function markRewardReceived(
     return affected > 0
 }
 
+export interface CancelRewardOrderCoreOptions {
+    /** 积分流水的说明前缀，管理端用于标记平台操作 */
+    descriptionPrefix?: string
+    /** 为 true 时，兑换用户已不在该家庭则拒绝退还积分 */
+    requireMemberForRefund?: boolean
+    /** 并发冲突时的错误文案 */
+    statusChangedMessage?: string
+}
+
+/**
+ * 撤销兑换的事务核心（调用方负责事务与权限校验）
+ * - 状态 pending → cancelled，退还积分，归还库存（剩余可撤），写积分流水（reward_deduct 退还）
+ */
+export async function cancelRewardOrderCore(
+    conn: PoolConnection,
+    order: RewardOrderRow,
+    opts: CancelRewardOrderCoreOptions = {}
+): Promise<{ refundedPoints: number }> {
+    const statusChangedMessage = opts.statusChangedMessage || '兑换状态变更失败，可能已被处理'
+    const descriptionPrefix = opts.descriptionPrefix || ''
+
+    // 状态流转（并发保护）
+    const [sRes] = await conn.query(
+        `UPDATE reward_order SET status = 'cancelled' WHERE id = ? AND family_id = ? AND status = 'pending'`,
+        [order.id, order.family_id]
+    )
+    if ((sRes as any).affectedRows === 0) throw new Error(statusChangedMessage)
+
+    // 退还积分
+    const [uRow] = await conn.query(
+        `SELECT points FROM family_member WHERE family_id = ? AND user_id = ? FOR UPDATE`,
+        [order.family_id, order.user_id]
+    )
+    const memberRow = (uRow as any[])[0]
+    if (!memberRow && opts.requireMemberForRefund) {
+        throw new Error('兑换用户已不在该家庭，无法退还积分')
+    }
+    const currentPoints = Number(memberRow?.points) || 0
+    const nextBalance = currentPoints + order.reward_points
+    await conn.query(
+        `UPDATE family_member SET points = ? WHERE family_id = ? AND user_id = ?`,
+        [nextBalance, order.family_id, order.user_id]
+    )
+
+    // 归还库存（若有限量）
+    await conn.query(
+        `UPDATE reward SET stock = stock + 1 WHERE id = ? AND stock >= 0`,
+        [order.reward_id]
+    )
+
+    // 写积分流水
+    await recordPointsInternal(conn, {
+        userId: order.user_id,
+        familyId: order.family_id,
+        change: order.reward_points,
+        balance: nextBalance,
+        type: 'reward_deduct',
+        referenceType: 'reward',
+        referenceId: order.id,
+        description: `${descriptionPrefix}撤销兑换退还积分：${order.reward_name}（+${order.reward_points} 积分）`
+    })
+
+    return { refundedPoints: order.reward_points }
+}
+
 /**
  * 撤销兑换（本人待领取状态）
  * - 事务：状态 pending → cancelled，退还积分，归还库存（剩余可撤），写积分流水（reward_deduct 退还）
@@ -447,42 +513,7 @@ export async function cancelRewardOrder(
     try {
         await conn.beginTransaction()
 
-        // 状态流转（并发保护）
-        const [sRes] = await conn.query(
-            `UPDATE reward_order SET status = 'cancelled' WHERE id = ? AND family_id = ? AND status = 'pending'`,
-            [orderId, familyId]
-        )
-        if ((sRes as any).affectedRows === 0) throw new Error('兑换状态变更失败，可能已被处理')
-
-        // 退还积分
-        const [uRow] = await conn.query(
-            `SELECT points FROM family_member WHERE family_id = ? AND user_id = ? FOR UPDATE`,
-            [familyId, order.user_id]
-        )
-        const currentPoints = Number((uRow as any[])[0]?.points) || 0
-        const nextBalance = currentPoints + order.reward_points
-        await conn.query(
-            `UPDATE family_member SET points = ? WHERE family_id = ? AND user_id = ?`,
-            [nextBalance, familyId, order.user_id]
-        )
-
-        // 归还库存（若有限量）
-        await conn.query(
-            `UPDATE reward SET stock = stock + 1 WHERE id = ? AND stock >= 0`,
-            [order.reward_id]
-        )
-
-        // 写积分流水
-        await recordPointsInternal(conn, {
-            userId: order.user_id,
-            familyId,
-            change: order.reward_points,
-            balance: nextBalance,
-            type: 'reward_deduct',
-            referenceType: 'reward',
-            referenceId: orderId,
-            description: `撤销兑换退还积分：${order.reward_name}（+${order.reward_points} 积分）`
-        })
+        await cancelRewardOrderCore(conn, order)
 
         await conn.commit()
         return true

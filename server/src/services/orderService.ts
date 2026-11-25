@@ -4,6 +4,7 @@
  * - 创建：家庭成员均可下单
  * - 状态流转：管理员可确认/完成/取消；下单者可取消自己的待确认订单
  */
+import type { PoolConnection } from 'mysql2/promise'
 import { pool, query, queryOne, insert, update } from '../db'
 import type { OrderRow, OrderItemRow, OrderStatus } from '../types/db'
 import type { Order, OrderItem } from '../types/api'
@@ -357,6 +358,82 @@ export async function completeOrder(userId: number, familyId: number, orderId: n
     }
 }
 
+export interface CancelOrderCoreOptions {
+    /** 积分流水的说明前缀，管理端用于标记平台操作 */
+    descriptionPrefix?: string
+    /** 为 true 时，下单用户已不在该家庭则拒绝退还积分 */
+    requireMemberForRefund?: boolean
+    /** 并发冲突时的错误文案 */
+    statusChangedMessage?: string
+}
+
+/**
+ * 取消订单的事务核心（调用方负责事务与权限校验）
+ * - 状态 pending/confirmed → cancelled（并发保护）
+ * - 归还库存
+ * - 退还下单者已扣积分（若订单消耗过积分），写入 order_deduct 退还流水
+ */
+export async function cancelOrderCore(
+    conn: PoolConnection,
+    order: OrderRow,
+    items: OrderItemRow[],
+    opts: CancelOrderCoreOptions = {}
+): Promise<{ refundedPoints: number }> {
+    const statusChangedMessage = opts.statusChangedMessage || '订单状态变更失败，可能已被其他操作修改'
+    const descriptionPrefix = opts.descriptionPrefix || ''
+
+    // 变更订单状态为 cancelled
+    const [updRes] = await conn.query(
+        `UPDATE \`order\` SET status = 'cancelled' WHERE id = ? AND family_id = ? AND status IN ('pending','confirmed')`,
+        [order.id, order.family_id]
+    )
+    if ((updRes as any).affectedRows === 0) {
+        throw new Error(statusChangedMessage)
+    }
+
+    // 归还库存
+    for (const it of items) {
+        await conn.query(
+            `UPDATE dish SET stock = stock + ? WHERE id = ?`,
+            [it.quantity, it.dish_id]
+        )
+    }
+
+    // 退还下单者已扣积分（仅当订单有积分消耗且尚未完成发放时），按家庭隔离
+    const totalPoints = Number(order.total_points) || 0
+    let refundedPoints = 0
+    if (totalPoints > 0 && order.status !== 'completed') {
+        const [uRow] = await conn.query(
+            `SELECT points FROM family_member WHERE family_id = ? AND user_id = ? FOR UPDATE`,
+            [order.family_id, order.user_id]
+        )
+        const memberRow = (uRow as any[])[0]
+        if (!memberRow && opts.requireMemberForRefund) {
+            throw new Error('下单用户已不在该家庭，无法退还积分')
+        }
+        const currentPoints = Number(memberRow?.points) || 0
+        const nextBalance = currentPoints + totalPoints
+        await conn.query(
+            `UPDATE family_member SET points = ? WHERE family_id = ? AND user_id = ?`,
+            [nextBalance, order.family_id, order.user_id]
+        )
+
+        await recordPointsInternal(conn, {
+            userId: order.user_id,
+            familyId: order.family_id,
+            change: totalPoints,
+            balance: nextBalance,
+            type: 'order_deduct',
+            referenceType: 'order',
+            referenceId: order.id,
+            description: `${descriptionPrefix}取消订单退还 ${totalPoints} 积分（订单 ${order.order_no}）`
+        })
+        refundedPoints = totalPoints
+    }
+
+    return { refundedPoints }
+}
+
 /**
  * 取消订单（事务）
  * - 管理员：可取消 pending/confirmed
@@ -397,48 +474,7 @@ export async function cancelOrder(userId: number, familyId: number, orderId: num
     try {
         await conn.beginTransaction()
 
-        // 变更订单状态为 cancelled
-        const [updRes] = await conn.query(
-            `UPDATE \`order\` SET status = 'cancelled' WHERE id = ? AND family_id = ? AND status IN ('pending','confirmed')`,
-            [orderId, familyId]
-        )
-        if ((updRes as any).affectedRows === 0) {
-            throw new Error('订单状态变更失败，可能已被其他操作修改')
-        }
-
-        // 归还库存
-        for (const it of items) {
-            await conn.query(
-                `UPDATE dish SET stock = stock + ? WHERE id = ?`,
-                [it.quantity, it.dish_id]
-            )
-        }
-
-        // 退还下单者已扣积分（仅当订单有积分消耗且尚未完成发放时），按家庭隔离
-        const totalPoints = Number(order.total_points) || 0
-        if (totalPoints > 0 && order.status !== 'completed') {
-            const [uRow] = await conn.query(
-                `SELECT points FROM family_member WHERE family_id = ? AND user_id = ? FOR UPDATE`,
-                [familyId, order.user_id]
-            )
-            const currentPoints = Number((uRow as any[])[0]?.points) || 0
-            const nextBalance = currentPoints + totalPoints
-            await conn.query(
-                `UPDATE family_member SET points = ? WHERE family_id = ? AND user_id = ?`,
-                [nextBalance, familyId, order.user_id]
-            )
-
-            await recordPointsInternal(conn, {
-                userId: order.user_id,
-                familyId,
-                change: totalPoints,
-                balance: nextBalance,
-                type: 'order_deduct',
-                referenceType: 'order',
-                referenceId: orderId,
-                description: `取消订单退还 ${totalPoints} 积分（订单 ${order.order_no}）`
-            })
-        }
+        await cancelOrderCore(conn, order, items)
 
         await conn.commit()
         return true

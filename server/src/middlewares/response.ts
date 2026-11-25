@@ -7,7 +7,7 @@ import { Response, Request, NextFunction } from 'express'
 declare module 'express-serve-static-core' {
     interface Response {
         success(data?: any, message?: string): void
-        fail(message: string, code?: number): void
+        fail(message: string, code?: number, data?: any): void
     }
 }
 
@@ -16,8 +16,8 @@ export function responseEnhance(_req: Request, res: Response, next: NextFunction
         res.json({ code: 0, message, data })
     }
 
-    res.fail = function (message: string, code = -1): void {
-        res.json({ code, message, data: null })
+    res.fail = function (message: string, code = -1, data: any = null): void {
+        res.json({ code, message, data })
     }
 
     next()

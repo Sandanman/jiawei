@@ -311,6 +311,51 @@ CREATE TABLE `daily_region_meal` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='地域化三餐推荐表（v1.1，按地区+日期记录早中晚推荐菜）';
 
 --
+-- Table structure for table `admin_user`
+--
+
+CREATE TABLE `admin_user` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '管理员 ID',
+  `username` varchar(32) NOT NULL COMMENT '登录用户名',
+  `password_hash` varchar(255) NOT NULL COMMENT '密码哈希，格式 salt:hash（与业务端同一方案）',
+  `nickname` varchar(32) NOT NULL DEFAULT '' COMMENT '显示名称',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '1 正常 0 禁用',
+  `token_version` int unsigned NOT NULL DEFAULT '0' COMMENT '改密后 +1，使旧 token 失效',
+  `failed_count` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '连续登录失败次数',
+  `locked_until` datetime DEFAULT NULL COMMENT '锁定截止时间，NULL 表示未锁定',
+  `last_login_at` datetime DEFAULT NULL COMMENT '最近登录时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_admin_username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='管理后台 - 管理员账号';
+
+--
+-- Table structure for table `admin_audit_log`
+--
+
+CREATE TABLE `admin_audit_log` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT COMMENT '日志 ID',
+  `admin_id` bigint unsigned NOT NULL COMMENT '操作者管理员 ID',
+  `admin_name` varchar(32) NOT NULL DEFAULT '' COMMENT '操作者用户名快照',
+  `action` varchar(64) NOT NULL COMMENT '操作编码，如 family.close',
+  `target_type` varchar(32) NOT NULL COMMENT 'family / user / dish / order / reward_order / reward / points / region / admin',
+  `target_id` varchar(64) NOT NULL DEFAULT '' COMMENT '目标 ID；地域为 region_code，故用字符串',
+  `family_id` bigint unsigned DEFAULT NULL COMMENT '关联家庭 ID，便于按家庭检索',
+  `reason` varchar(255) NOT NULL DEFAULT '' COMMENT '操作原因',
+  `before_data` json DEFAULT NULL COMMENT '变更前值，不含密码/哈希/token',
+  `after_data` json DEFAULT NULL COMMENT '变更后值，不含密码/哈希/token',
+  `ip` varchar(45) NOT NULL DEFAULT '' COMMENT '来源 IP',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_admin_created` (`admin_id`, `created_at`),
+  KEY `idx_action_created` (`action`, `created_at`),
+  KEY `idx_target` (`target_type`, `target_id`),
+  KEY `idx_family` (`family_id`),
+  KEY `idx_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='管理后台 - 审计日志（只增不改）';
+
+--
 -- Dumping routines for database 'jiawei'
 --
 
@@ -319,3 +364,4 @@ CREATE TABLE `daily_region_meal` (
 -- 补充更新：2026-11-02（合并 v1.1 地域化三餐推荐迁移：user.region_code + daily_region_recommendation[_item]）
 -- 补充更新：2026-11-23（合并 2026112301_region_adcode_v1.1 迁移：user.region_code 改为市级 adcode，新增 user.region_name / user.region_source）
 -- 补充更新：2026-11-23（合并 2026112302_region_meal_merge_v1.1 迁移：daily_region_recommendation[_item] 合并为 daily_region_meal）
+-- 补充更新：2026-11-24（合并 2026112303_admin_console_v1.0 迁移：新增 admin_user / admin_audit_log）

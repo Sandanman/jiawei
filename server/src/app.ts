@@ -17,17 +17,40 @@ import pointsRouter from './routes/points'
 import taskRouter from './routes/task'
 import rewardRouter from './routes/reward'
 import regionRecommendationRouter from './routes/regionRecommendation'
+import adminRouter from './routes/admin'
+import { adminError } from './middlewares/adminError'
 import { startRegionRecommendationCron } from './jobs/regionRecommendationCron'
 
 const app = express()
 
 // ===== 基础中间件 =====
 app.use(helmet())
-app.use(cors({
+// 全局 CORS：业务端放开 *；/api/admin 交给下面的独立白名单处理
+const globalCors = cors({
     origin: '*', // 开发阶段允许所有来源，生产环境需配置白名单
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
-}))
+})
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/admin')) {
+        next()
+        return
+    }
+    globalCors(req, res, next)
+})
+// 管理后台独立 CORS 白名单（ADMIN_CORS_ORIGINS）
+const adminCors = cors({
+    origin: (origin, callback) => {
+        // 无 Origin（同源/服务端调用）直接放行
+        if (!origin || config.adminCors.origins.includes(origin)) {
+            callback(null, true)
+            return
+        }
+        callback(null, false)
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+})
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(morgan(config.app.isDev ? 'dev' : 'combined'))
@@ -44,6 +67,7 @@ app.use('/api/points', pointsRouter)
 app.use('/api/task', taskRouter)
 app.use('/api/reward', rewardRouter)
 app.use('/api/v1', regionRecommendationRouter)
+app.use('/api/admin', adminCors, adminRouter, adminError)
 
 // ===== 错误处理 =====
 app.use(notFound)

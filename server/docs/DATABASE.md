@@ -50,6 +50,8 @@
 | `reward` | 积分商城奖励商品 | category: physical/gift/play/dish |
 | `reward_order` | 奖励兑换记录 | status: pending/received/cancelled |
 | `daily_region_meal` | 地域化三餐推荐（v1.1，按市级 adcode + 日期，一行一道菜；失败时仅 1 行占位） | meal_type: breakfast/lunch/dinner；status: success/failed |
+| `admin_user` | 管理后台管理员账号（独立于业务端 user/account） | status: 1正常/0禁用；token_version 改密后 +1 |
+| `admin_audit_log` | 管理后台审计日志（只增不改，无更新/删除接口） | target_type: family/user/dish/order/reward_order/reward/points/region/admin |
 
 ## 4. 表关联关系（逻辑外键，未在 DB 层建约束，仅靠代码保证一致性）
 
@@ -71,6 +73,7 @@ family (1) ──< reward                   家庭下的奖励商品
 reward.dish_id -> dish.id               当 reward.category='dish' 时关联菜品
 reward (1) ──< reward_order             奖励兑换记录（reward 快照）
 family/user ──< reward_order            兑换记录归属
+admin_user (1) ──< admin_audit_log      管理员操作审计（admin_audit_log.family_id 逻辑关联 family）
 ```
 
 要点：
