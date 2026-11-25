@@ -161,11 +161,16 @@ export async function cancelAdminRewardOrder(
     }
 
     return withTransaction(async conn => {
-        const result = await cancelRewardOrderCore(conn, order, {
-            descriptionPrefix: '[平台撤销] ',
-            requireMemberForRefund: true,
-            statusChangedMessage: '兑换状态变更失败，可能已被处理'
-        })
+        let result: Awaited<ReturnType<typeof cancelRewardOrderCore>>
+        try {
+            result = await cancelRewardOrderCore(conn, order, {
+                descriptionPrefix: '[平台撤销] ',
+                requireMemberForRefund: true,
+                statusChangedMessage: '兑换状态变更失败，可能已被处理'
+            })
+        } catch (err) {
+            throw err instanceof BizError ? err : new BizError((err as Error).message)
+        }
 
         await writeAudit(conn, {
             adminId: admin.id,

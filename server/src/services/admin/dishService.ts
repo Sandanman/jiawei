@@ -156,7 +156,7 @@ const DISH_FIELDS: Record<string, FieldDefinition> = {
         validate: value => {
             const text = String(value ?? '').trim()
             if (!/^\d+(\.\d{1,2})?$/.test(text)) throw new BizError('价格不合法')
-            return text
+            return Number(text)
         }
     },
     points: {

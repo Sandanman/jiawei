@@ -194,11 +194,16 @@ export async function cancelAdminOrder(
     )
 
     return withTransaction(async conn => {
-        const result = await cancelOrderCore(conn, order, items, {
-            descriptionPrefix: '[平台取消] ',
-            requireMemberForRefund: true,
-            statusChangedMessage: '订单状态已变更'
-        })
+        let result: Awaited<ReturnType<typeof cancelOrderCore>>
+        try {
+            result = await cancelOrderCore(conn, order, items, {
+                descriptionPrefix: '[平台取消] ',
+                requireMemberForRefund: true,
+                statusChangedMessage: '订单状态已变更'
+            })
+        } catch (err) {
+            throw err instanceof BizError ? err : new BizError((err as Error).message)
+        }
 
         await writeAudit(conn, {
             adminId: admin.id,
