@@ -5,7 +5,7 @@
  * - 状态流转：管理员可确认/完成/取消；下单者可取消自己的待确认订单
  */
 import type { PoolConnection } from 'mysql2/promise'
-import { pool, query, queryOne, insert, update } from '../db'
+import { pool, query, queryOne, update } from '../db'
 import type { OrderRow, OrderItemRow, OrderStatus } from '../types/db'
 import type { Order, OrderItem } from '../types/api'
 import { requireMember, requireAdmin, getMemberRole } from './permissionService'

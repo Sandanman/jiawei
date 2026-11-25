@@ -3,7 +3,7 @@
  * - 所有操作需校验家庭成员身份
  * - 创建/更新/删除/上下架需管理员权限
  */
-import { pool, query, queryOne, insert, update } from '../db'
+import { query, queryOne, insert, update } from '../db'
 import type { DishRow } from '../types/db'
 import type { Dish } from '../types/api'
 import { requireMember, requireAdmin } from './permissionService'

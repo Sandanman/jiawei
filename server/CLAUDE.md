@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 项目信息
 
 - **项目名称**：jiawei-server（家味小札后端服务）
-- **技术栈**：Express 4.19.2 + TypeScript 5.4.0 + MySQL（mysql2）+ JWT
+- **技术栈**：Express 4.19.2 + TypeScript 7.0 + MySQL（mysql2）+ JWT
 - **包管理器**：npm
 - **关键配置**：tsconfig.json（strict: true，路径别名 `@/*` 等）、.env（基于 .env.example）
 
@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev     # ts-node-dev 开发模式（自动重启）
 npm run build   # tsc 编译到 dist/
 npm run start   # 运行编译产物
-npm run lint    # eslint 检查（.ts）
+npm run lint    # oxlint 检查（src/**/*.ts）
 ```
 
 ---
@@ -77,7 +77,7 @@ server/
 | 注释 | JSDoc 风格，注明 HTTP method + path + Body |
 | 错误处理 | asyncHandler 统一包裹，关键位置 try-catch |
 
-**建议补充**：.editorconfig / .prettierrc / eslint 配置（当前无，与 fe 子项目保持一致为宜）
+**工程配置**：`.editorconfig` / `.prettierrc` 由仓库根目录统一提供；Lint 使用 `oxlint`（配置文件 `.oxlintrc.json`，`npm run lint`）。格式化交给 Prettier，Lint 只负责正确性问题。
 
 ---
 

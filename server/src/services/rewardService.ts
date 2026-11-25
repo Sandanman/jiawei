@@ -17,7 +17,7 @@ const VALID_CATEGORIES: RewardCategory[] = ['physical', 'gift', 'play', 'dish']
 const VALID_ORDER_STATUS: RewardOrderStatus[] = ['pending', 'received', 'cancelled']
 
 async function toReward(row: RewardRow & { dish_name?: string }): Promise<Reward> {
-    let dishName = row.dish_name || ''
+    const dishName = row.dish_name || ''
     // 非 dish 类型或未关联菜品时，冗余 dishName 为空
     return {
         id: row.id,

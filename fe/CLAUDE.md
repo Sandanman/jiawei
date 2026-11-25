@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 项目信息
 
 - **项目名称**：jiawei（家味小札）
-- **技术栈**：uni-app + Vue 3.4.0 + TypeScript 5.4.0 + Vite 5.2.0 + SCSS
+- **技术栈**：uni-app + Vue 3.4.0 + TypeScript 7.0 + Vite 5.2.8 + SCSS
 - **目标平台**：微信小程序（mp-weixin）+ H5
 - **包管理器**：npm
 - **关键配置**：tsconfig.json（strict: true）、vite.config.ts、pages.json、manifest.json
@@ -98,7 +98,7 @@ jiawei/
 | CSS 类名 | kebab-case |
 | 模板组件标签 | uni-app 内置（view / text） |
 
-**建议补充**：.editorconfig / .prettierrc / eslint 配置
+**工程配置**：`.editorconfig` / `.prettierrc` 由仓库根目录统一提供；ESLint 配置为 `.eslintrc.js`（尚未安装 eslint 依赖）
 
 ---
 

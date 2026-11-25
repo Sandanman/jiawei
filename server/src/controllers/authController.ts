@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express'
+import { Request, Response } from 'express'
 import { login, getProfile, register, resetPassword } from '../services/authService'
 import { asyncHandler } from '../utils/asyncHandler'
 import type { RegisterType } from '../types/api'

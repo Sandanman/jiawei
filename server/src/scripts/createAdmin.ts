@@ -63,7 +63,7 @@ function prompt(question: string, options: PromptOptions = {}): Promise<string> 
 }
 
 function validatePassword(password: string): string | null {
-    const valid = /^[A-Za-z0-9_!@#$%^&*.\-]{8,64}$/.test(password)
+    const valid = /^[A-Za-z0-9_!@#$%^&*.-]{8,64}$/.test(password)
         && /[A-Za-z]/.test(password)
         && /\d/.test(password)
     return valid ? null : '密码需 8–64 位且同时包含字母和数字'

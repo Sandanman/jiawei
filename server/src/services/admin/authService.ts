@@ -152,7 +152,7 @@ export async function getAdminProfile(adminId: number): Promise<{
 
 /** 新密码规则：8-64 位且同时包含字母和数字 */
 function validateNewPassword(password: string): void {
-    const valid = /^[A-Za-z0-9_!@#$%^&*.\-]{8,64}$/.test(password)
+    const valid = /^[A-Za-z0-9_!@#$%^&*.-]{8,64}$/.test(password)
         && /[A-Za-z]/.test(password)
         && /\d/.test(password)
     if (!valid) {

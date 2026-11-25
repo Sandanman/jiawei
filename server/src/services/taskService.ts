@@ -7,10 +7,10 @@
  *
  * 数据表：task（主表） + task_assignee（指派关系，1:N）
  */
-import { pool, query, queryOne, insert, update } from '../db'
+import { pool, query, queryOne, update } from '../db'
 import type { TaskRow, TaskAssigneeRow, TaskStatus, TaskCategory } from '../types/db'
 import type { Task, TaskAssignee, CreateTaskPayload, UpdateTaskPayload, TakeTaskResult, CompleteTaskResult } from '../types/api'
-import { requireMember, requireAdmin, getMemberRole } from './permissionService'
+import { requireMember, requireAdmin } from './permissionService'
 import { recordPointsInternal } from './pointsService'
 
 /** 合法任务状态 */

@@ -6,10 +6,10 @@
  *
  * 数据库约束：points_balance 不可为负（INT UNSIGNED）
  */
-import { pool, query, queryOne, insert, update } from '../db'
-import type { PointsRecordRow, PointsRecordType, PointsReferenceType, FamilyMemberRow, UserRow } from '../types/db'
+import { pool, query, queryOne } from '../db'
+import type { PointsRecordRow, PointsRecordType, PointsReferenceType, FamilyMemberRow } from '../types/db'
 import type { PointsRecord, PointsSummary } from '../types/api'
-import { requireMember, requireAdmin, getMemberRole } from './permissionService'
+import { requireMember, requireAdmin } from './permissionService'
 
 function toPointsRecord(row: PointsRecordRow & { nickname?: string }): PointsRecord {
     return {
